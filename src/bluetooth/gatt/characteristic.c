@@ -1,4 +1,4 @@
-#include "heartratetransmitter.h"
+#include "hda_service.h"
 #include "bluetooth/gatt/characteristic.h"
 #include "bluetooth/gatt/descriptor.h"
 
@@ -19,18 +19,18 @@ bool create_gatt_characteristic()
 
 	if(retval != BT_ERROR_NONE)
 	{
-		dlog_print(DLOG_DEBUG, LOG_TAG, "%s/%s/%d: Function bt_gatt_characteristic_create() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "%s/%s/%d: Function bt_gatt_characteristic_create() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
 
 	if(!add_gatt_descriptor_to_gatt_characteristic())
 	{
-		dlog_print(DLOG_ERROR, LOG_TAG, "%s/%s/%d: Failed to add a descriptor to a specified characteristic.", __FILE__, __func__, __LINE__);
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "%s/%s/%d: Failed to add a descriptor to a specified characteristic.", __FILE__, __func__, __LINE__);
 		return false;
 	}
 	else
 	{
-		dlog_print(DLOG_INFO, LOG_TAG, "%s/%s/%d: Succeeded in adding a descriptor to a specified characteristic.", __FILE__, __func__, __LINE__);
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "%s/%s/%d: Succeeded in adding a descriptor to a specified characteristic.", __FILE__, __func__, __LINE__);
 		return true;
 	}
 }
@@ -42,17 +42,17 @@ bool add_gatt_descriptor_to_gatt_characteristic()
 
 	if (!get_gatt_descriptor_handle(&gatt_descriptor_handle))
 	{
-		dlog_print(DLOG_ERROR, LOG_TAG, "%s/%s/%d: Failed to get the GATT descriptor's handle.", __FILE__, __func__, __LINE__);
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "%s/%s/%d: Failed to get the GATT descriptor's handle.", __FILE__, __func__, __LINE__);
 		return false;
 	}
 	else
-		dlog_print(DLOG_INFO, LOG_TAG, "%s/%s/%d: Succeeded in getting the GATT descriptor's handle.", __FILE__, __func__, __LINE__);
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "%s/%s/%d: Succeeded in getting the GATT descriptor's handle.", __FILE__, __func__, __LINE__);
 
 	retval =  bt_gatt_characteristic_add_descriptor(gatt_characteristic_handle, gatt_descriptor_handle);
 
 	if(retval != BT_ERROR_NONE)
 	{
-		dlog_print(DLOG_DEBUG, LOG_TAG, "%s/%s/%d: Function bt_gatt_characteristic_add_descriptor() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "%s/%s/%d: Function bt_gatt_characteristic_add_descriptor() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
 	else
@@ -68,7 +68,7 @@ bool set_gatt_characteristic_value(int value)
 
 	if(retval != BT_ERROR_NONE)
 	{
-		dlog_print(DLOG_DEBUG, LOG_TAG, "%s/%s/%d: Function bt_gatt_set_value() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "%s/%s/%d: Function bt_gatt_set_value() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
 	else
@@ -83,7 +83,7 @@ bool notify_gatt_characteristic_value_changed()
 
 	if(retval != BT_ERROR_NONE)
 	{
-		dlog_print(DLOG_DEBUG, LOG_TAG, "%s/%s/%d: Function bt_gatt_server_notify_characteristic_changed_value() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "%s/%s/%d: Function bt_gatt_server_notify_characteristic_changed_value() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
 	else
@@ -93,9 +93,9 @@ bool notify_gatt_characteristic_value_changed()
 void gatt_characteristic_notification_sent_callback(int result, const char *remote_address, bt_gatt_server_h server, bt_gatt_h characteristic, bool completed, void *user_data)
 {
 	if(!completed)
-		dlog_print(DLOG_ERROR, LOG_TAG, "%s/%s/%d: Failed to send a GATT characteristic value changed notification.", __FILE__, __func__, __LINE__);
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "%s/%s/%d: Failed to send a GATT characteristic value changed notification.", __FILE__, __func__, __LINE__);
 	else
-		dlog_print(DLOG_INFO, LOG_TAG, "%s/%s/%d: Succeeded in sending a GATT characteristic value changed notification.", __FILE__, __func__, __LINE__);
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "%s/%s/%d: Succeeded in sending a GATT characteristic value changed notification.", __FILE__, __func__, __LINE__);
 }
 
 bool get_gatt_characteristic_handle(bt_gatt_h *gatt_handle)

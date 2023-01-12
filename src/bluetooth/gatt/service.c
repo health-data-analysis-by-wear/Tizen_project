@@ -1,4 +1,4 @@
-#include "heartratetransmitter.h"
+#include "hda_service.h"
 #include "bluetooth/gatt/service.h"
 #include "bluetooth/gatt/characteristic.h"
 
@@ -13,18 +13,18 @@ bool create_gatt_service()
 
 	if(retval != BT_ERROR_NONE)
 	{
-		dlog_print(DLOG_DEBUG, LOG_TAG, "%s/%s/%d: Function bt_gatt_service_create() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "%s/%s/%d: Function bt_gatt_service_create() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
 
 	if(!add_gatt_characteristic_to_gatt_service())
 	{
-		dlog_print(DLOG_ERROR, LOG_TAG, "%s/%s/%d: Failed to add a characteristic to a specified service.", __FILE__, __func__, __LINE__);
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "%s/%s/%d: Failed to add a characteristic to a specified service.", __FILE__, __func__, __LINE__);
 		return false;
 	}
 	else
 	{
-		dlog_print(DLOG_INFO, LOG_TAG, "%s/%s/%d: Succeeded in adding a characteristic to a specified service.", __FILE__, __func__, __LINE__);
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "%s/%s/%d: Succeeded in adding a characteristic to a specified service.", __FILE__, __func__, __LINE__);
 		return true;
 	}
 }
@@ -36,17 +36,17 @@ bool add_gatt_characteristic_to_gatt_service()
 
 	if (!get_gatt_characteristic_handle(&gatt_characteristic_handle))
 	{
-		dlog_print(DLOG_ERROR, LOG_TAG, "%s/%s/%d: Failed to get the GATT characteristic's handle.", __FILE__, __func__, __LINE__);
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "%s/%s/%d: Failed to get the GATT characteristic's handle.", __FILE__, __func__, __LINE__);
 		return false;
 	}
 	else
-		dlog_print(DLOG_INFO, LOG_TAG, "%s/%s/%d: Succeeded in getting the GATT characteristic's handle.", __FILE__, __func__, __LINE__);
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "%s/%s/%d: Succeeded in getting the GATT characteristic's handle.", __FILE__, __func__, __LINE__);
 
 	retval = bt_gatt_service_add_characteristic(gatt_service_handle, gatt_characteristic_handle);
 
 	if(retval != BT_ERROR_NONE)
 	{
-		dlog_print(DLOG_DEBUG, LOG_TAG, "%s/%s/%d: Function bt_gatt_service_add_characteristic() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "%s/%s/%d: Function bt_gatt_service_add_characteristic() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
 	else
@@ -72,7 +72,7 @@ bool set_bluetooth_le_advertising_gatt_service_uuid(bt_advertiser_h bluetooth_le
 
 	if(retval != BT_ERROR_NONE)
 	{
-		dlog_print(DLOG_DEBUG, LOG_TAG, "%s/%s/%d: Function bt_adapter_le_add_advertising_service_uuid() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "%s/%s/%d: Function bt_adapter_le_add_advertising_service_uuid() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
 	else
@@ -87,7 +87,7 @@ bool destroy_gatt_service()
 
 	if(retval != BT_ERROR_NONE)
 	{
-		dlog_print(DLOG_DEBUG, LOG_TAG, "%s/%s/%d: Function bt_gatt_service_destroy() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "%s/%s/%d: Function bt_gatt_service_destroy() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
 	else

@@ -1,4 +1,15 @@
 #include "hda_service.h"
+#include <privacy_privilege_manager.h>
+
+#include <sensor/hrm_listener.h>
+#include <sensor/physics_listener.h>
+
+#include "bluetooth/gatt/server.h"
+#include "bluetooth/gatt/service.h"
+#include "bluetooth/gatt/characteristic.h"
+#include "bluetooth/gatt/descriptor.h"
+#include "bluetooth/le/advertiser.h"
+
 
 typedef struct appdata {
 	Evas_Object *win;
@@ -18,8 +29,21 @@ typedef struct appdata {
 	Elm_Object_Item *nv_it;
 } appdata_s;
 
+sensor_type_e sensor_type = SENSOR_HRM;
+sensor_h sensor_handle = 0;
+
 static void clicked_slight(void *user_data, Evas* e,  Evas_Object *obj, void *event_info);
 static void clicked_sharp(void *user_data, Evas* e,  Evas_Object *obj, void *event_info);
+
+
+bool check_hrm_sensor_is_supported();
+bool initialize_hrm_sensor();
+
+const char *sensor_privilege = "http://tizen.org/privilege/healthinfo";
+
+bool check_and_request_sensor_permission();
+bool request_sensor_permission();
+void request_sensor_permission_response_callback(ppm_call_cause_e cause, ppm_request_result_e result, const char *privilege, void *user_data);
 
 static void
 win_delete_request_cb(void *data, Evas_Object *obj, void *event_info)
@@ -116,9 +140,110 @@ app_create(void *data)
 		Initialize UI resources and application's data
 		If this function returns true, the main loop of application starts
 		If this function returns false, the application is terminated */
+	int retval;
+	bt_adapter_state_e bluetooth_adapter_state;
+
 	appdata_s *ad = data;
 
 	create_base_gui(ad);
+
+	if(!check_hrm_sensor_is_supported())
+	{
+		dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "A HRM sensor is not supported.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "A HRM sensor is supported.");
+	retval = bt_initialize();
+	if(retval != BT_ERROR_NONE)
+	{
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "Function bt_initialize() return value = %s", get_error_message(retval));
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to initialize the Bluetooth API.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in initializing the Bluetooth API.");
+	retval = bt_adapter_get_state(&bluetooth_adapter_state);
+	if(retval != BT_ERROR_NONE)
+	{
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "Function bt_adapter_get_state() return value = %s", get_error_message(retval));
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to get the current state of local Bluetooth adapter.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in getting the current state of local Bluetooth adapter.");
+	if (bluetooth_adapter_state == BT_ADAPTER_DISABLED)
+	{
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Bluetooth adapter is disabled.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Bluetooth adapter is enabled.");
+	retval = bt_gatt_server_initialize();
+	if(retval != BT_ERROR_NONE)
+	{
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "Function bt_gatt_server_initialize() return value = %s", get_error_message(retval));
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to initialize the GATT server.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in initializing the GATT server.");
+	if(!create_gatt_descriptor())
+	{
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to create the GATT characteristic descriptor.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in creating the GATT characteristic descriptor.");
+	if(!create_gatt_characteristic())
+	{
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to create the GATT characteristic.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in creating the GATT characteristic.");
+	if(!create_gatt_service())
+	{
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to create the GATT service.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in creating the GATT service.");
+	if(!create_gatt_server())
+	{
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to create the GATT server's handle.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in creating the GATT server's handle.");
+	if(!start_gatt_server())
+	{
+	dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to register the application along with the GATT services of the application it is hosting.");
+			return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in registering the application along with the GATT services of the application it is hosting.");
+	if(!create_bluetooth_le_advertiser())
+	{
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to create advertiser to advertise device's existence.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in creating advertiser to advertise device's existence.");
+	if(!start_bluetooth_le_advertising())
+	{
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to start advertising with passed advertiser and advertising parameters.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in starting advertising with passed advertiser and advertising parameters.");
+
+//	create_physics_sensor_listener();
+//	sensor_launch_all();
+
+
+
+
 
 	return true;
 }
@@ -139,12 +264,46 @@ static void
 app_resume(void *data)
 {
 	/* Take necessary actions when application becomes visible. */
+	if (!check_and_request_sensor_permission())
+	{
+		dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Failed to check if an application has permission to use the sensor privilege.");
+		ui_app_exit();
+	}
+	else
+		dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Succeeded in checking if an application has permission to use the sensor privilege.");
+
 }
 
 static void
 app_terminate(void *data)
 {
 	/* Release all resources. */
+	int retval;
+
+	if(check_hrm_sensor_listener_is_created())
+	{
+		if(!destroy_hrm_sensor_listener())
+			dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Failed to release all the resources allocated for a HRM sensor listener.");
+		else
+			dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Succeeded in releasing all the resources allocated for a HRM sensor listener.");
+	}
+	if(!destroy_gatt_service())
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to destroy the GATT handle of service.");
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in destroying the GATT handle of service.");
+	if(!destroy_gatt_server())
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to destroy the GATT server's handle.");
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in destroying the GATT server's handle.");
+
+	retval = bt_deinitialize();
+	if(retval != BT_ERROR_NONE)
+	{
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "Function bt_deinitialize() return value = %s", get_error_message(retval));
+		dlog_print(DLOG_ERROR, BLUETOOTH_LOG_TAG, "Failed to release all resources of the Bluetooth API.");
+	}
+	else
+		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "Succeeded in releasing all resources of the Bluetooth API.");
 }
 
 static void
@@ -272,7 +431,8 @@ static void activated_screen(appdata_s *ad){
 ///////////////////////////// Event /////////////////////////////
 /////////////////////////////////////////////////////////////////
 
-static void clicked_slight(void *user_data, Evas* e,  Evas_Object *obj, void *event_info){
+static void clicked_slight(void *user_data, Evas* e,  Evas_Object *obj, void *event_info)
+{
 	 dlog_print(DLOG_INFO, "HDA_EVENT", "Slight");
 
 	 Evas_Object *popup;
@@ -285,7 +445,8 @@ static void clicked_slight(void *user_data, Evas* e,  Evas_Object *obj, void *ev
 	 elm_popup_timeout_set(popup, 2.0);
 	 evas_object_show(popup);
 }
-static void clicked_sharp(void *user_data, Evas* e,  Evas_Object *obj, void *event_info){
+static void clicked_sharp(void *user_data, Evas* e,  Evas_Object *obj, void *event_info)
+{
 	 dlog_print(DLOG_INFO, "HDA_EVENT", "Sharp");
 
 	 Evas_Object *popup;
@@ -299,5 +460,187 @@ static void clicked_sharp(void *user_data, Evas* e,  Evas_Object *obj, void *eve
 	 evas_object_show(popup);
 }
 
+bool check_hrm_sensor_is_supported()
+{
+	int retval;
+	bool supported = false;
+
+	retval = sensor_is_supported(sensor_type, &supported);
+
+	if(retval != SENSOR_ERROR_NONE)
+	{
+		dlog_print(DLOG_DEBUG, SENSOR_LOG_TAG, "Function sensor_is_supported() return value = %s", get_error_message(retval));
+		dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Failed to checks whether a HRM sensor is supported in the current device.");
+		return false;
+	}
+	else
+		dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Succeeded in checking whether a HRM sensor is supported in the current device.");
+
+	if(!supported)
+	{
+		dlog_print(DLOG_DEBUG, SENSOR_LOG_TAG, "Function sensor_is_supported() output supported = %d", supported);
+		return false;
+	}
+	else
+		return true;
+}
+
+bool initialize_hrm_sensor()
+{
+	int retval;
+
+	retval = sensor_get_default_sensor(sensor_type, &sensor_handle);
+
+	if(retval != SENSOR_ERROR_NONE)
+	{
+		dlog_print(DLOG_DEBUG, SENSOR_LOG_TAG, "Function sensor_get_default_sensor() return value = %s", get_error_message(retval));
+		return false;
+	}
+	else
+		return true;
+}
+
+bool check_and_request_sensor_permission()
+{
+	int retval;
+	ppm_check_result_e result;
+
+	retval = ppm_check_permission(sensor_privilege, &result);
+
+	if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE)
+	{
+		switch (result)
+		{
+		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ALLOW:
+			/* Update UI and start accessing protected functionality */
+			dlog_print(DLOG_INFO, LOG_TAG, "The application has permission to use a sensor privilege.");
+
+			if(!check_hrm_sensor_listener_is_created())
+			{
+				if(!initialize_hrm_sensor())
+				{
+					dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Failed to get the handle for the default sensor of a HRM sensor.");
+					return false;
+				}
+				else
+					dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Succeeded in getting the handle for the default sensor of a HRM sensor.");
+
+				if(!create_hrm_sensor_listener(sensor_handle))
+				{
+					dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Failed to create a HRM sensor listener.");
+					return false;
+				}
+				else
+					dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Succeeded in creating a HRM sensor listener.");
+
+				if(!start_hrm_sensor_listener())
+					dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Failed to start observing the sensor events regarding a HRM sensor listener.");
+				else
+					dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Succeeded in starting observing the sensor events regarding a HRM sensor listener.");
+			}
+			return true;
+		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY:
+			/* Show a message and terminate the application */
+			dlog_print(DLOG_DEBUG, SENSOR_LOG_TAG, "Function ppm_check_permission() output result = PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY");
+			dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "The application doesn't have permission to use a sensor privilege.");
+			return false;
+		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ASK:
+			dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "The user has to be asked whether to grant permission to use a sensor privilege.");
+
+			if(!request_sensor_permission())
+			{
+				dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Failed to request a user's response to obtain permission for using the sensor privilege.");
+				return false;
+			}
+			else
+			{
+				dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Succeeded in requesting a user's response to obtain permission for using the sensor privilege.");
+				return true;
+			}
+		}
+	}
+	else
+	{
+		/* retval != PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE */
+		/* Handle errors */
+		dlog_print(DLOG_DEBUG, SENSOR_LOG_TAG, "Function ppm_check_permission() return %s", get_error_message(retval));
+		return false;
+	}
+}
+
+bool request_sensor_permission()
+{
+	int retval;
+
+	retval = ppm_request_permission(sensor_privilege, request_sensor_permission_response_callback, NULL);
+
+	/* Log and handle errors */
+	if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE)
+		return true;
+	else if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_ALREADY_IN_PROGRESS)
+		return true;
+	else
+	{
+		dlog_print(DLOG_DEBUG, SENSOR_LOG_TAG, "Function ppm_request_permission() return value = %s", get_error_message(retval));
+		return false;
+	}
+}
+
+void request_sensor_permission_response_callback(ppm_call_cause_e cause, ppm_request_result_e result, const char *privilege, void *user_data)
+{
+	if (cause == PRIVACY_PRIVILEGE_MANAGER_CALL_CAUSE_ERROR)
+	{
+		/* Log and handle errors */
+		dlog_print(DLOG_DEBUG, SENSOR_LOG_TAG, "Function request_sensor_permission_response_callback() output cause = PRIVACY_PRIVILEGE_MANAGER_CALL_CAUSE_ERROR");
+		dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Function request_sensor_permission_response_callback() was called because of an error.");
+	}
+	else
+	{
+		dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Function request_sensor_permission_response_callback() was called with a valid answer.");
+
+		switch (result) {
+		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_ALLOW_FOREVER:
+			/* Update UI and start accessing protected functionality */
+			dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "The user granted permission to use a sensor privilege for an indefinite period of time.");
+
+			if(!initialize_hrm_sensor())
+			{
+				dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Failed to get the handle for the default sensor of a HRM sensor.");
+				ui_app_exit();
+			}
+			else
+				dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Succeeded in getting the handle for the default sensor of a HRM sensor.");
+
+			if(!create_hrm_sensor_listener(sensor_handle))
+			{
+				dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Failed to create a HRM sensor listener.");
+				ui_app_exit();
+			}
+			else
+				dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Succeeded in creating a HRM sensor listener.");
+
+			if(!start_hrm_sensor_listener())
+			{
+				dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "Failed to start observing the sensor events regarding a HRM sensor listener.");
+				ui_app_exit();
+			}
+			else
+				dlog_print(DLOG_INFO, SENSOR_LOG_TAG, "Succeeded in starting observing the sensor events regarding a HRM sensor listener.");
+			break;
+		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_FOREVER:
+			/* Show a message and terminate the application */
+			dlog_print(DLOG_DEBUG, SENSOR_LOG_TAG, "Function request_sensor_permission_response_callback() output result = PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_FOREVER");
+			dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "The user denied granting permission to use a sensor privilege for an indefinite period of time.");
+			ui_app_exit();
+			break;
+		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_ONCE:
+			/* Show a message with explanation */
+			dlog_print(DLOG_DEBUG, SENSOR_LOG_TAG, "Function request_sensor_permission_response_callback() output result = PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_ONCE");
+			dlog_print(DLOG_ERROR, SENSOR_LOG_TAG, "The user denied granting permission to use a sensor privilege once.");
+			ui_app_exit();
+			break;
+		}
+	}
+}
 
 

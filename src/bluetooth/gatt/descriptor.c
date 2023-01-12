@@ -1,4 +1,4 @@
-#include "heartratetransmitter.h"
+#include "hda_service.h"
 #include "bluetooth/gatt/descriptor.h"
 
 bt_gatt_h gatt_descriptor_handle = 0;
@@ -16,7 +16,7 @@ bool create_gatt_descriptor()
 
 	if(retval != BT_ERROR_NONE)
 	{
-		dlog_print(DLOG_DEBUG, LOG_TAG, "%s/%s/%d: Function bt_gatt_descriptor_create() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
+		dlog_print(DLOG_DEBUG, BLUETOOTH_LOG_TAG, "%s/%s/%d: Function bt_gatt_descriptor_create() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
 	else
