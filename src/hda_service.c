@@ -571,8 +571,10 @@ bool initialize_accelerometer_sensor()
 		dlog_print(DLOG_DEBUG, ACCELEROMETER_SENSOR_LOG_TAG, "Accelerometer sensor_get_default_sensor() return value = %s", get_error_message(retval));
 		return false;
 	}
-	else
+	else {
+		dlog_print(DLOG_DEBUG, ACCELEROMETER_SENSOR_LOG_TAG, "Accelerometer initialized.");
 		return true;
+	}
 }
 
 bool initialize_gravity_sensor()
@@ -585,8 +587,10 @@ bool initialize_gravity_sensor()
 		dlog_print(DLOG_DEBUG, GRAVITY_SENSOR_LOG_TAG, "Gravity sensor_get_default_sensor() return value = %s", get_error_message(retval));
 		return false;
 	}
-	else
+	else{
+		dlog_print(DLOG_DEBUG, GRAVITY_SENSOR_LOG_TAG, "Gravity initialized.");
 		return true;
+	}
 }
 
 bool check_and_request_sensor_permission()

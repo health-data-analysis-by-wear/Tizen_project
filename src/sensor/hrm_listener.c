@@ -19,7 +19,6 @@ bool create_hrm_sensor_listener(sensor_h sensor_handle)
 		dlog_print(DLOG_DEBUG, HRM_SENSOR_LOG_TAG, "%s/%s/%d: Function sensor_create_listener() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
-
 	if(!set_hrm_sensor_listener_attribute())
 	{
 		dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG, "%s/%s/%d: Failed to set an attribute to control the behavior of a HRM sensor listener.", __FILE__, __func__, __LINE__);

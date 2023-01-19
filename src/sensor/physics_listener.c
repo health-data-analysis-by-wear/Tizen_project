@@ -15,10 +15,9 @@ bool create_physics_sensor_listener(sensor_h accelerometer_sensor_handle, sensor
 	retval = sensor_create_listener(accelerometer_sensor_handle, &accelerometer_sensor_listener_handle);
 	if(retval != SENSOR_ERROR_NONE)
 	{
-		dlog_print(DLOG_DEBUG, PHYSICS_SENSOR_LOG_TAG, "%s/%s/%d: Accelerometer sensor_create_listener() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
+		dlog_print(DLOG_DEBUG, ACCELEROMETER_SENSOR_LOG_TAG, "%s/%s/%d: Accelerometer sensor_create_listener() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
 		return false;
 	}
-
 	if(!set_accelerometer_sensor_listener_attribute())
 	{
 		dlog_print(DLOG_ERROR, ACCELEROMETER_SENSOR_LOG_TAG, "%s/%s/%d: Failed to set an attribute to control the behavior of a Accelerometer sensor listener.", __FILE__, __func__, __LINE__);
@@ -26,7 +25,6 @@ bool create_physics_sensor_listener(sensor_h accelerometer_sensor_handle, sensor
 	}
 	else
 		dlog_print(DLOG_INFO, ACCELEROMETER_SENSOR_LOG_TAG, "%s/%s/%d: Succeeded in setting an attribute to control the behavior of a Accelerometer sensor listener.", __FILE__, __func__, __LINE__);
-
 	if(!set_accelerometer_sensor_listener_event_callback())
 	{
 		dlog_print(DLOG_ERROR, ACCELEROMETER_SENSOR_LOG_TAG, "%s/%s/%d: Failed to register the callback function to be invoked when sensor events are delivered via a Accelerometer sensor listener.", __FILE__, __func__, __LINE__);
@@ -40,25 +38,22 @@ bool create_physics_sensor_listener(sensor_h accelerometer_sensor_handle, sensor
 	if(retval != SENSOR_ERROR_NONE)
 	{
 		dlog_print(DLOG_DEBUG, GRAVITY_SENSOR_LOG_TAG, "%s/%s/%d: Gravity sensor_create_listener() return value = %s", __FILE__, __func__, __LINE__, get_error_message(retval));
-//		return false;
+		return false;
 	}
-
 	if(!set_gravity_sensor_listener_attribute())
 	{
 		dlog_print(DLOG_ERROR, GRAVITY_SENSOR_LOG_TAG, "%s/%s/%d: Failed to set an attribute to control the behavior of a Gravity sensor listener.", __FILE__, __func__, __LINE__);
-//		return false;
+		return false;
 	}
 	else
 		dlog_print(DLOG_INFO, GRAVITY_SENSOR_LOG_TAG, "%s/%s/%d: Succeeded in setting an attribute to control the behavior of a Gravity sensor listener.", __FILE__, __func__, __LINE__);
-
 	if(!set_gravity_sensor_listener_event_callback())
 	{
 		dlog_print(DLOG_ERROR, GRAVITY_SENSOR_LOG_TAG, "%s/%s/%d: Failed to register the callback function to be invoked when sensor events are delivered via a Gravity sensor listener.", __FILE__, __func__, __LINE__);
-//		return false;
+		return false;
 	}
 	else
 		dlog_print(DLOG_INFO, GRAVITY_SENSOR_LOG_TAG, "%s/%s/%d: Succeeded in registering the callback function to be invoked when sensor events are delivered via a Gravity sensor listener.", __FILE__, __func__, __LINE__);
-
 	return true;
 }
 
@@ -177,7 +172,7 @@ bool start_physics_sensor_listener()
 	if(gravity_retval != SENSOR_ERROR_NONE)
 	{
 		dlog_print(DLOG_DEBUG, GRAVITY_SENSOR_LOG_TAG, "%s/%s/%d: Function sensor_listener_start() return value = %s", __FILE__, __func__, __LINE__, get_error_message(gravity_retval));
-//		return false;
+		return false;
 	}
 
 	return true;
@@ -198,7 +193,7 @@ bool stop_physics_sensor_listener()
 	if(gravity_retval != SENSOR_ERROR_NONE)
 	{
 		dlog_print(DLOG_DEBUG, GRAVITY_SENSOR_LOG_TAG, "%s/%s/%d: Function sensor_listener_stop() return value = %s", __FILE__, __func__, __LINE__, get_error_message(gravity_retval));
-//		return false;
+		return false;
 	}
 
 	return true;
@@ -225,7 +220,7 @@ bool destroy_physics_sensor_listener()
 	if(gravity_retval != SENSOR_ERROR_NONE)
 	{
 		dlog_print(DLOG_DEBUG, GRAVITY_SENSOR_LOG_TAG, "%s/%s/%d: Function sensor_destroy_listener() return value = %s", __FILE__, __func__, __LINE__, get_error_message(gravity_retval));
-//		return false;
+		return false;
 	}
 	else
 	{
@@ -240,6 +235,6 @@ bool check_physics_sensor_listener_is_created()
 	if (accelerometer_sensor_listener_handle == 0)
 		return false;
 	if (gravity_sensor_listener_handle == 0)
-//		return false;
+		return false;
 	return true;
 }
