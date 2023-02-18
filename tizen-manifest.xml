@@ -6,7 +6,10 @@
         <icon>hda_service.png</icon>
     </ui-application>
     <privileges>
+        <privilege>http://tizen.org/privilege/mediastorage</privilege>
         <privilege>http://tizen.org/privilege/healthinfo</privilege>
         <privilege>http://tizen.org/privilege/bluetooth</privilege>
+        <privilege>http://tizen.org/privilege/externalstorage</privilege>
+        <privilege>http://tizen.org/privilege/content.write</privilege>
     </privileges>
 </manifest>
