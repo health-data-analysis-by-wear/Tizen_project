@@ -9,6 +9,7 @@
 
 #include <sensor.h>
 #include <bluetooth.h>
+#include <time.h>
 
 #ifdef  LOG_TAG
 #undef  LOG_TAG
