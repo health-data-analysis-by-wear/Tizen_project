@@ -149,10 +149,9 @@ void hrm_sensor_listener_event_callback(sensor_h sensor,
 	dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
 			"%s/%s/%d: Function sensor_events_callback() output value = %d",
 			__FILE__, __func__, __LINE__, value);
-
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "HRM output value = (%d)\n", value);
+	snprintf(msg_data, 512, "HRM output value = (%llu, %d)\n", events[0].timestamp, value);
 	append_file(filepath, msg_data);
 
 	//	if(!set_gatt_characteristic_value(value))
@@ -175,7 +174,7 @@ void hrm_led_green_sensor_listener_event_callback(sensor_h sensor,
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "HRM led green output value = (%d)\n", value);
+	snprintf(msg_data, 512, "HRM led green output value = (%llu, %d)\n", events[0].timestamp, value);
 	append_file(filepath, msg_data);
 }
 

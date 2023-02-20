@@ -336,19 +336,19 @@ void accelerometer_sensor_listener_event_callback(sensor_h sensor,
 // is working
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "Accelerometer output value = (%i, %f, %f, %f)\n",
-			events[0].accuracy, events[0].values[0], events[0].values[1],
+	snprintf(msg_data, 512, "Accelerometer output value = (%llu, %f, %f, %f)\n",
+			events[0].timestamp, events[0].values[0], events[0].values[1],
 			events[0].values[2]);
 	append_file(filepath, msg_data);
 
 	dlog_print(DLOG_INFO, ACCELEROMETER_SENSOR_LOG_TAG,
-			"%s/%s/%d: Function sensor_events_callback() output value = (%i, %i, %f, %f, %f)",
-			__FILE__, __func__, __LINE__, events[0].timestamp,
-			events[0].accuracy, events[0].values[0], events[0].values[1],
+			"%s/%s/%d: Function sensor_events_callback() output value = (%llu, %f, %f, %f)",
+			__FILE__, __func__, __LINE__,
+			events[0].timestamp, events[0].values[0], events[0].values[1],
 			events[0].values[2]);
 	for (int i = 1; i < events_count; i++) {
 		unsigned long long timestamp = events[i].timestamp;
-		int accuracy = events[i].accuracy;
+		//int accuracy = events[i].accuracy;
 		float x = events[i].values[0];
 		float y = events[i].values[1];
 		float z = events[i].values[2];
@@ -362,20 +362,20 @@ void accelerometer_sensor_listener_event_callback(sensor_h sensor,
 void gravity_sensor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], int events_count, void *user_data) {
 	dlog_print(DLOG_INFO, GRAVITY_SENSOR_LOG_TAG,
-			"%s/%s/%d: Function sensor_events_callback() output value = (%i, %f, %f, %f)",
-			__FILE__, __func__, __LINE__, events[0].accuracy,
+			"%s/%s/%d: Function sensor_events_callback() output value = (%llu, %f, %f, %f)",
+			__FILE__, __func__, __LINE__, events[0].timestamp,
 			events[0].values[0], events[0].values[1], events[0].values[2]);
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "Gravity output value = (%i, %f, %f, %f)\n",
-			events[0].accuracy, events[0].values[0], events[0].values[1],
+	snprintf(msg_data, 512, "Gravity output value = (%llu, %f, %f, %f)\n",
+			events[0].timestamp, events[0].values[0], events[0].values[1],
 			events[0].values[2]);
 	append_file(filepath, msg_data);
 
 	for (int i = 1; i < events_count; i++) {
 		unsigned long long timestamp = events[i].timestamp;
-		int accuracy = events[i].accuracy;
+		//int accuracy = events[i].accuracy;
 		float x = events[i].values[0];
 		float y = events[i].values[1];
 		float z = events[i].values[2];
@@ -389,15 +389,15 @@ void gravity_sensor_listener_event_callback(sensor_h sensor,
 void gyroscope_rotation_vector_sensor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], int events_count, void *user_data) {
 	dlog_print(DLOG_INFO, GYROSCOPE_ROTATION_VECTOR_SENSOR_LOG_TAG,
-			"%s/%s/%d: Function sensor_events_callback() output value = (%i, %f, %f, %f, %f)",
-			__FILE__, __func__, __LINE__, events[0].accuracy,
+			"%s/%s/%d: Function sensor_events_callback() output value = (%llu, %d, %f, %f, %f, %f)",
+			__FILE__, __func__, __LINE__, events[0].timestamp, events[0].accuracy,
 			events[0].values[0], events[0].values[1], events[0].values[2],
 			events[0].values[3]);
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "Gyroscope rotation vector output value = (%i, %f, %f, %f, %f)\n",
-			events[0].accuracy, events[0].values[0], events[0].values[1],
+	snprintf(msg_data, 512, "Gyroscope rotation vector output value = (%llu, %d, %f, %f, %f, %f)\n",
+			events[0].timestamp, events[0].accuracy, events[0].values[0], events[0].values[1],
 			events[0].values[2], events[0].values[3]);
 	append_file(filepath, msg_data);
 
@@ -418,14 +418,14 @@ void gyroscope_rotation_vector_sensor_listener_event_callback(sensor_h sensor,
 void gyroscope_sensor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], int events_count, void *user_data) {
 	dlog_print(DLOG_INFO, GYROSCOPE_SENSOR_LOG_TAG,
-			"%s/%s/%d: Function sensor_events_callback() output value = (%i, %f, %f, %f)",
-			__FILE__, __func__, __LINE__, events[0].accuracy,
+			"%s/%s/%d: Function sensor_events_callback() output value = (%llu, %f, %f, %f)",
+			__FILE__, __func__, __LINE__, events[0].timestamp,
 			events[0].values[0], events[0].values[1], events[0].values[2]);
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "Gyroscope output value = (%i, %f, %f, %f)\n",
-			events[0].accuracy, events[0].values[0], events[0].values[1],
+	snprintf(msg_data, 512, "Gyroscope output value = (%llu, %f, %f, %f)\n",
+			events[0].timestamp, events[0].values[0], events[0].values[1],
 			events[0].values[2]);
 	append_file(filepath, msg_data);
 
@@ -445,14 +445,14 @@ void gyroscope_sensor_listener_event_callback(sensor_h sensor,
 void linear_acceleration_sensor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], int events_count, void *user_data) {
 	dlog_print(DLOG_INFO, LINEAR_ACCELERATION_SENSOR_LOG_TAG,
-			"%s/%s/%d: Function sensor_events_callback() output value = (%i, %f, %f, %f)",
-			__FILE__, __func__, __LINE__, events[0].accuracy,
+			"%s/%s/%d: Function sensor_events_callback() output value = (%llu, %f, %f, %f)",
+			__FILE__, __func__, __LINE__, events[0].timestamp,
 			events[0].values[0], events[0].values[1], events[0].values[2]);
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "Linear acceleration output value = (%i, %f, %f, %f)\n",
-			events[0].accuracy, events[0].values[0], events[0].values[1],
+	snprintf(msg_data, 512, "Linear acceleration output value = (%llu, %f, %f, %f)\n",
+			events[0].timestamp, events[0].values[0], events[0].values[1],
 			events[0].values[2]);
 	append_file(filepath, msg_data);
 
