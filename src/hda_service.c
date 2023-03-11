@@ -72,10 +72,15 @@ bool initialize_pressure_sensor();
 bool initialize_sleep_monitor();
 
 const char *sensor_privilege = "http://tizen.org/privilege/healthinfo";
+const char *mediastorage_privilege = "http://tizen.org/privilege/mediastorage";
 
 bool check_and_request_sensor_permission();
 bool request_sensor_permission();
-void request_sensor_permission_response_callback(ppm_call_cause_e cause,
+//void request_sensor_permission_response_callback(ppm_call_cause_e cause,
+//		ppm_request_result_e result, const char *privilege, void *user_data);
+void request_health_sensor_permission_response_callback(ppm_call_cause_e cause,
+		ppm_request_result_e result, const char *privilege, void *user_data);
+void request_physics_sensor_permission_response_callback(ppm_call_cause_e cause,
 		ppm_request_result_e result, const char *privilege, void *user_data);
 
 static void win_delete_request_cb(void *data, Evas_Object *obj,
@@ -115,7 +120,7 @@ static void create_base_gui(appdata_s *ad) {
 	elm_win_indicator_mode_set(ad->win, ELM_WIN_INDICATOR_SHOW);
 	elm_win_indicator_opacity_set(ad->win, ELM_WIN_INDICATOR_OPAQUE);
 	evas_object_size_hint_weight_set(ad->conform, EVAS_HINT_EXPAND,
-			EVAS_HINT_EXPAND);
+	EVAS_HINT_EXPAND);
 	elm_win_resize_object_add(ad->win, ad->conform);
 	evas_object_show(ad->conform);
 
@@ -135,9 +140,9 @@ static void create_base_gui(appdata_s *ad) {
 	elm_object_style_set(ad->btn_slight, "default");
 	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
 	evas_object_size_hint_weight_set(ad->btn_slight, EVAS_HINT_EXPAND,
-			EVAS_HINT_EXPAND);
+	EVAS_HINT_EXPAND);
 	evas_object_size_hint_align_set(ad->btn_slight, EVAS_HINT_FILL,
-			EVAS_HINT_FILL);
+	EVAS_HINT_FILL);
 	elm_object_text_set(ad->btn_slight, "<b>SLIGHT</b>");
 	evas_object_show(ad->btn_slight);
 	elm_box_pack_start(ad->box_main, ad->btn_slight);
@@ -152,9 +157,9 @@ static void create_base_gui(appdata_s *ad) {
 	elm_object_style_set(ad->btn_slight, "default");
 	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
 	evas_object_size_hint_weight_set(ad->btn_sharp, EVAS_HINT_EXPAND,
-			EVAS_HINT_EXPAND);
+	EVAS_HINT_EXPAND);
 	evas_object_size_hint_align_set(ad->btn_sharp, EVAS_HINT_FILL,
-			EVAS_HINT_FILL);
+	EVAS_HINT_FILL);
 	elm_object_text_set(ad->btn_sharp, "<b>SHARP</b>");
 	evas_object_show(ad->btn_sharp);
 	elm_box_pack_end(ad->box_main, ad->btn_sharp);
@@ -509,9 +514,9 @@ static void activated_screen(appdata_s *ad) {
 	elm_object_style_set(ad->btn_slight, "default");
 	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
 	evas_object_size_hint_weight_set(ad->btn_slight, EVAS_HINT_EXPAND,
-			EVAS_HINT_EXPAND);
+	EVAS_HINT_EXPAND);
 	evas_object_size_hint_align_set(ad->btn_slight, EVAS_HINT_FILL,
-			EVAS_HINT_FILL);
+	EVAS_HINT_FILL);
 	elm_object_text_set(ad->btn_slight, "<b>SLIGHT</b>");
 	evas_object_show(ad->btn_slight);
 	elm_box_pack_start(ad->box_main, ad->btn_slight);
@@ -526,9 +531,9 @@ static void activated_screen(appdata_s *ad) {
 	elm_object_style_set(ad->btn_slight, "default");
 	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
 	evas_object_size_hint_weight_set(ad->btn_sharp, EVAS_HINT_EXPAND,
-			EVAS_HINT_EXPAND);
+	EVAS_HINT_EXPAND);
 	evas_object_size_hint_align_set(ad->btn_sharp, EVAS_HINT_FILL,
-			EVAS_HINT_FILL);
+	EVAS_HINT_FILL);
 	elm_object_text_set(ad->btn_sharp, "<b>SHARP</b>");
 	evas_object_show(ad->btn_sharp);
 	elm_box_pack_end(ad->box_main, ad->btn_sharp);
@@ -930,7 +935,6 @@ bool initialize_linear_acceleration_sensor() {
 	}
 }
 
-
 bool initialize_light_sensor() {
 	int retval;
 	retval = sensor_get_default_sensor(SENSOR_LIGHT, &light_sensor_handle);
@@ -997,13 +1001,21 @@ bool initialize_sleep_monitor() {
 }
 
 bool check_and_request_sensor_permission() {
-	int retval;
-	ppm_check_result_e result;
+	bool health_usable = true;
+	bool physics_usable = true;
+	bool environment_usable = true;
 
-	retval = ppm_check_permission(sensor_privilege, &result);
+	int health_retval;
+	int mediastorage_retval;
+	ppm_check_result_e health_result;
+	ppm_check_result_e mediastorage_result;
 
-	if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE) {
-		switch (result) {
+	health_retval = ppm_check_permission(sensor_privilege, &health_result);
+	mediastorage_retval = ppm_check_permission(mediastorage_privilege,
+			&mediastorage_result);
+
+	if (health_retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE) {
+		switch (health_result) {
 		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ALLOW:
 			/* Update UI and start accessing protected functionality */
 			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
@@ -1014,7 +1026,7 @@ bool check_and_request_sensor_permission() {
 						|| !initialize_hrm_led_green_sensor()) {
 					dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
 							"Failed to get the handle for the default sensor of a HRM sensor.");
-					return false;
+					health_usable = false;
 				} else
 					dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
 							"Succeeded in getting the handle for the default sensor of a HRM sensor.");
@@ -1023,7 +1035,7 @@ bool check_and_request_sensor_permission() {
 						hrm_led_green_sensor_handle)) {
 					dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
 							"Failed to create a HRM sensor listener.");
-					//return false;
+					health_usable = false;
 				} else
 					dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
 							"Succeeded in creating a HRM sensor listener.");
@@ -1035,17 +1047,54 @@ bool check_and_request_sensor_permission() {
 					dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
 							"Succeeded in starting observing the sensor events regarding a HRM sensor listener.");
 			}
+			break;
+		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY:
+			/* Show a message and terminate the application */
+			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+					"Function ppm_check_permission() output result = PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY");
+			dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+					"The application doesn't have permission to use a sensor privilege.");
+			health_usable = false;
+			break;
+		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ASK:
+			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+					"The user has to be asked whether to grant permission to use a sensor privilege.");
+
+			if (!request_sensor_permission()) {
+				dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+						"Failed to request a user's response to obtain permission for using the sensor privilege.");
+				health_usable = false;
+			} else {
+				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+						"Succeeded in requesting a user's response to obtain permission for using the sensor privilege.");
+				health_usable = true;
+			}
+			break;
+		}
+	} else {
+		/* retval != PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE */
+		/* Handle errors */
+		dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+				"Function ppm_check_permission() return %s",
+				get_error_message(health_retval));
+		health_usable = false;
+	}
+
+	if (mediastorage_retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE) {
+		if (mediastorage_result
+				== PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ALLOW) {
+			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+					"The application has permission to use a storage privilege.");
 
 			if (!check_physics_sensor_listener_is_created()) {
 				if (!initialize_accelerometer_sensor()
 						|| !initialize_gravity_sensor()
 						|| !initialize_gyroscope_rotation_vector_sensor()
 						|| !initialize_gyroscope_sensor()
-						|| !initialize_linear_acceleration_sensor()
-						) {
+						|| !initialize_linear_acceleration_sensor()) {
 					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
 							"Failed to get the handle for the default sensor of a Physics sensor.");
-					return false;
+					physics_usable = false;
 				} else
 					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
 							"Succeeded in getting the handle for the default sensor of a Physics sensor.");
@@ -1057,7 +1106,7 @@ bool check_and_request_sensor_permission() {
 						linear_acceleration_sensor_handle)) {
 					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
 							"Failed to create a Physics sensor listener.");
-					return false;
+					physics_usable = false;
 				} else
 					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
 							"Succeeded in creating a Physics sensor listener.");
@@ -1077,7 +1126,7 @@ bool check_and_request_sensor_permission() {
 						|| !initialize_sleep_monitor()) {
 					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
 							"Failed to get the handle for the default sensor of a Environment sensor.");
-					return false;
+					environment_usable = false;
 				} else
 					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
 							"Succeeded in getting the handle for the default sensor of a Environment sensor.");
@@ -1087,7 +1136,7 @@ bool check_and_request_sensor_permission() {
 						sleep_monitor_handle)) {
 					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
 							"Failed to create a Environment sensor listener.");
-					return false;
+					environment_usable = false;
 				} else
 					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
 							"Succeeded in creating a Environment sensor listener.");
@@ -1099,58 +1148,219 @@ bool check_and_request_sensor_permission() {
 					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
 							"Succeeded in starting observing the sensor events regarding a Environment sensor listener.");
 			}
-			return true;
-		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY:
-			/* Show a message and terminate the application */
-			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-					"Function ppm_check_permission() output result = PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY");
-			dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-					"The application doesn't have permission to use a sensor privilege.");
-			return false;
-		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ASK:
-			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+		} else if (mediastorage_result
+				== PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ASK) {
+			dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
 					"The user has to be asked whether to grant permission to use a sensor privilege.");
 
 			if (!request_sensor_permission()) {
-				dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+				dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
 						"Failed to request a user's response to obtain permission for using the sensor privilege.");
-				return false;
+				physics_usable = false;
+				environment_usable = false;
 			} else {
-				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+				dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
 						"Succeeded in requesting a user's response to obtain permission for using the sensor privilege.");
-				return true;
+				physics_usable = true;
+				environment_usable = true;
 			}
+		} else {
+			dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+					"Function ppm_check_permission() output result = PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY");
+			dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+					"The application doesn't have permission to use a sensor privilege.");
+			physics_usable = false;
+			environment_usable = false;
 		}
 	} else {
 		/* retval != PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE */
 		/* Handle errors */
-		dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+		dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
 				"Function ppm_check_permission() return %s",
-				get_error_message(retval));
-		return false;
+				get_error_message(mediastorage_retval));
+		physics_usable = false;
+		environment_usable = false;
 	}
+
+	return health_usable && physics_usable && environment_usable;
+
+//	int retval;
+//	ppm_check_result_e result;
+//	health_retval = ppm_check_permission(sensor_privilege, &result);
+//
+//	if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE) {
+//		switch (result) {
+//		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ALLOW:
+//			/* Update UI and start accessing protected functionality */
+//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//					"The application has permission to use a sensor privilege.");
+//
+//			if (!check_hrm_sensor_listener_is_created()) {
+//				if (!initialize_hrm_sensor()
+//						|| !initialize_hrm_led_green_sensor()) {
+//					dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//							"Failed to get the handle for the default sensor of a HRM sensor.");
+//					return false;
+//				} else
+//					dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//							"Succeeded in getting the handle for the default sensor of a HRM sensor.");
+//
+//				if (!create_hrm_sensor_listener(hrm_sensor_handle,
+//						hrm_led_green_sensor_handle)) {
+//					dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//							"Failed to create a HRM sensor listener.");
+//					//return false;
+//				} else
+//					dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//							"Succeeded in creating a HRM sensor listener.");
+//
+//				if (!start_hrm_sensor_listener())
+//					dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//							"Failed to start observing the sensor events regarding a HRM sensor listener.");
+//				else
+//					dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//							"Succeeded in starting observing the sensor events regarding a HRM sensor listener.");
+//			}
+//
+//			if (!check_physics_sensor_listener_is_created()) {
+//				if (!initialize_accelerometer_sensor()
+//						|| !initialize_gravity_sensor()
+//						|| !initialize_gyroscope_rotation_vector_sensor()
+//						|| !initialize_gyroscope_sensor()
+//						|| !initialize_linear_acceleration_sensor()) {
+//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+//							"Failed to get the handle for the default sensor of a Physics sensor.");
+//					return false;
+//				} else
+//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+//							"Succeeded in getting the handle for the default sensor of a Physics sensor.");
+//
+//				if (!create_physics_sensor_listener(accelerometer_sensor_handle,
+//						gravity_sensor_handle,
+//						gyroscope_rotation_vector_sensor_hanlde,
+//						gyroscope_sensor_handle,
+//						linear_acceleration_sensor_handle)) {
+//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+//							"Failed to create a Physics sensor listener.");
+//					return false;
+//				} else
+//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+//							"Succeeded in creating a Physics sensor listener.");
+//
+//				if (!start_physics_sensor_listener())
+//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+//							"Failed to start observing the sensor events regarding a Physics sensor listener.");
+//				else
+//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+//							"Succeeded in starting observing the sensor events regarding a Physics sensor listener.");
+//			}
+//
+//			if (!check_environment_sensor_listener_is_created()) {
+//				if (!initialize_light_sensor() || !initialize_pedometer()
+//						|| !initialize_pressure_sensor()
+//						|| !initialize_sleep_monitor()) {
+//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Failed to get the handle for the default sensor of a Environment sensor.");
+//					return false;
+//				} else
+//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Succeeded in getting the handle for the default sensor of a Environment sensor.");
+//
+//				if (!create_environment_sensor_listener(light_sensor_handle,
+//						pedometer_handle, pressure_sensor_handle,
+//						sleep_monitor_handle)) {
+//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Failed to create a Environment sensor listener.");
+//					return false;
+//				} else
+//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Succeeded in creating a Environment sensor listener.");
+//
+//				if (!start_environment_sensor_listener())
+//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Failed to start observing the sensor events regarding a Environment sensor listener.");
+//				else
+//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Succeeded in starting observing the sensor events regarding a Environment sensor listener.");
+//			}
+//			return true;
+//		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY:
+//			/* Show a message and terminate the application */
+//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//					"Function ppm_check_permission() output result = PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY");
+//			dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//					"The application doesn't have permission to use a sensor privilege.");
+//			return false;
+//		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ASK:
+//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//					"The user has to be asked whether to grant permission to use a sensor privilege.");
+//
+//			if (!request_sensor_permission()) {
+//				dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//						"Failed to request a user's response to obtain permission for using the sensor privilege.");
+//				return false;
+//			} else {
+//				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//						"Succeeded in requesting a user's response to obtain permission for using the sensor privilege.");
+//				return true;
+//			}
+//		}
+//	} else {
+//		/* retval != PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE */
+//		/* Handle errors */
+//		dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//				"Function ppm_check_permission() return %s",
+//				get_error_message(retval));
+//		return false;
+//	}
 }
 
 bool request_sensor_permission() {
-	int retval;
+	int health_retval;
+	int mediastorage_retval;
 
-	retval = ppm_request_permission(sensor_privilege,
-			request_sensor_permission_response_callback, NULL);
+	health_retval = ppm_request_permission(sensor_privilege,
+			request_health_sensor_permission_response_callback, NULL);
+	mediastorage_retval = ppm_request_permission(mediastorage_privilege,
+			request_physics_sensor_permission_response_callback, NULL);
 
-	/* Log and handle errors */
-	if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE)
+	if (health_retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE
+			&& mediastorage_retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE) {
 		return true;
-	else if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_ALREADY_IN_PROGRESS)
+	} else if (health_retval
+			== PRIVACY_PRIVILEGE_MANAGER_ERROR_ALREADY_IN_PROGRESS
+			&& mediastorage_retval
+					== PRIVACY_PRIVILEGE_MANAGER_ERROR_ALREADY_IN_PROGRESS) {
 		return true;
-	else {
+	} else {
 		dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
 				"Function ppm_request_permission() return value = %s",
-				get_error_message(retval));
+				get_error_message(health_retval));
+		dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+				"Function ppm_request_permission() return value = %s",
+				get_error_message(mediastorage_retval));
 		return false;
 	}
+
+//	int retval;
+//
+//	retval = ppm_request_permission(sensor_privilege,
+//			request_sensor_permission_response_callback, NULL);
+//
+//	/* Log and handle errors */
+//	if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE)
+//		return true;
+//	else if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_ALREADY_IN_PROGRESS)
+//		return true;
+//	else {
+//		dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//				"Function ppm_request_permission() return value = %s",
+//				get_error_message(retval));
+//		return false;
+//	}
 }
 
-void request_sensor_permission_response_callback(ppm_call_cause_e cause,
+void request_health_sensor_permission_response_callback(ppm_call_cause_e cause,
 		ppm_request_result_e result, const char *privilege, void *user_data) {
 	if (cause == PRIVACY_PRIVILEGE_MANAGER_CALL_CAUSE_ERROR) {
 		/* Log and handle errors */
@@ -1193,65 +1403,6 @@ void request_sensor_permission_response_callback(ppm_call_cause_e cause,
 			} else
 				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
 						"Succeeded in starting observing the sensor events regarding a HRM sensor listener.");
-
-			if (!check_physics_sensor_listener_is_created()) {
-				if (!initialize_accelerometer_sensor()
-						|| !initialize_gravity_sensor()
-						|| !initialize_gyroscope_rotation_vector_sensor()
-						|| !initialize_gyroscope_sensor()
-						|| !initialize_linear_acceleration_sensor()
-						) {
-					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
-							"Failed to get the handle for the default sensor of a Physics sensor.");
-				} else
-					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
-							"Succeeded in getting the handle for the default sensor of a Physics sensor.");
-
-				if (!create_physics_sensor_listener(accelerometer_sensor_handle,
-						gravity_sensor_handle,
-						gyroscope_rotation_vector_sensor_hanlde,
-						gyroscope_sensor_handle,
-						linear_acceleration_sensor_handle)) {
-					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
-							"Failed to create a Physics sensor listener.");
-				} else
-					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
-							"Succeeded in creating a Physics sensor listener.");
-
-				if (!start_physics_sensor_listener())
-					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
-							"Failed to start observing the sensor events regarding a Physics sensor listener.");
-				else
-					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
-							"Succeeded in starting observing the sensor events regarding a Physics sensor listener.");
-			}
-			if (!check_environment_sensor_listener_is_created()) {
-				if (!initialize_light_sensor()
-						|| !initialize_pedometer()
-						|| !initialize_pressure_sensor()
-						|| !initialize_sleep_monitor()) {
-					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
-							"Failed to get the handle for the default sensor of a Environment sensor.");
-				} else
-					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
-							"Succeeded in getting the handle for the default sensor of a Environment sensor.");
-
-				if (!create_environment_sensor_listener(light_sensor_handle,
-						pedometer_handle, pressure_sensor_handle,
-						sleep_monitor_handle)) {
-					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
-							"Failed to create a Environment sensor listener.");
-				} else
-					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
-							"Succeeded in creating a Environment sensor listener.");
-
-				if (!start_environment_sensor_listener())
-					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
-							"Failed to start observing the sensor events regarding a Environment sensor listener.");
-				else
-					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
-							"Succeeded in starting observing the sensor events regarding a Environment sensor listener.");
-			}
 			break;
 		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_FOREVER:
 			/* Show a message and terminate the application */
@@ -1272,4 +1423,218 @@ void request_sensor_permission_response_callback(ppm_call_cause_e cause,
 		}
 	}
 }
+
+void request_physics_sensor_permission_response_callback(ppm_call_cause_e cause,
+		ppm_request_result_e result, const char *privilege, void *user_data) {
+	if (cause == PRIVACY_PRIVILEGE_MANAGER_CALL_CAUSE_ERROR) {
+		/* Log and handle errors */
+		dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+				"Function request_sensor_permission_response_callback() output cause = PRIVACY_PRIVILEGE_MANAGER_CALL_CAUSE_ERROR");
+		dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+				"Function request_sensor_permission_response_callback() was called because of an error.");
+	} else {
+		dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+				"Function request_sensor_permission_response_callback() was called with a valid answer.");
+
+		switch (result) {
+		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_ALLOW_FOREVER:
+			/* Update UI and start accessing protected functionality */
+			dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+					"The user granted permission to use a sensor privilege for an indefinite period of time.");
+
+			if (!initialize_accelerometer_sensor()
+					|| !initialize_gravity_sensor()
+					|| !initialize_gyroscope_rotation_vector_sensor()
+					|| !initialize_gyroscope_sensor()
+					|| !initialize_linear_acceleration_sensor()) {
+				dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+						"Failed to get the handle for the default sensor of a Physics sensor.");
+			} else
+				dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+						"Succeeded in getting the handle for the default sensor of a Physics sensor.");
+
+			if (!create_physics_sensor_listener(accelerometer_sensor_handle,
+					gravity_sensor_handle,
+					gyroscope_rotation_vector_sensor_hanlde,
+					gyroscope_sensor_handle,
+					linear_acceleration_sensor_handle)) {
+				dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+						"Failed to create a Physics sensor listener.");
+			} else
+				dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+						"Succeeded in creating a Physics sensor listener.");
+
+			if (!start_physics_sensor_listener())
+				dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+						"Failed to start observing the sensor events regarding a Physics sensor listener.");
+			else
+				dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+						"Succeeded in starting observing the sensor events regarding a Physics sensor listener.");
+
+			if (!initialize_light_sensor() || !initialize_pedometer()
+					|| !initialize_pressure_sensor()
+					|| !initialize_sleep_monitor()) {
+				dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
+						"Failed to get the handle for the default sensor of a Environment sensor.");
+			} else
+				dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
+						"Succeeded in getting the handle for the default sensor of a Environment sensor.");
+
+			if (!create_environment_sensor_listener(light_sensor_handle,
+					pedometer_handle, pressure_sensor_handle,
+					sleep_monitor_handle)) {
+				dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
+						"Failed to create a Environment sensor listener.");
+			} else
+				dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
+						"Succeeded in creating a Environment sensor listener.");
+
+			if (!start_environment_sensor_listener())
+				dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
+						"Failed to start observing the sensor events regarding a Environment sensor listener.");
+			else
+				dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
+						"Succeeded in starting observing the sensor events regarding a Environment sensor listener.");
+
+			break;
+		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_FOREVER:
+			/* Show a message and terminate the application */
+			dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+					"Function request_sensor_permission_response_callback() output result = PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_FOREVER");
+			dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+					"The user denied granting permission to use a sensor privilege for an indefinite period of time.");
+			ui_app_exit();
+			break;
+		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_ONCE:
+			/* Show a message with explanation */
+			dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+					"Function request_sensor_permission_response_callback() output result = PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_ONCE");
+			dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+					"The user denied granting permission to use a sensor privilege once.");
+			ui_app_exit();
+			break;
+		}
+	}
+}
+
+//void request_sensor_permission_response_callback(ppm_call_cause_e cause,
+//		ppm_request_result_e result, const char *privilege, void *user_data) {
+//	if (cause == PRIVACY_PRIVILEGE_MANAGER_CALL_CAUSE_ERROR) {
+//		/* Log and handle errors */
+//		dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//				"Function request_sensor_permission_response_callback() output cause = PRIVACY_PRIVILEGE_MANAGER_CALL_CAUSE_ERROR");
+//		dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//				"Function request_sensor_permission_response_callback() was called because of an error.");
+//	} else {
+//		dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//				"Function request_sensor_permission_response_callback() was called with a valid answer.");
+//
+//		switch (result) {
+//		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_ALLOW_FOREVER:
+//			/* Update UI and start accessing protected functionality */
+//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//					"The user granted permission to use a sensor privilege for an indefinite period of time.");
+//
+//			if (!initialize_hrm_sensor()
+//					|| !initialize_hrm_led_green_sensor()) {
+//				dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//						"Failed to get the handle for the default sensor of a HRM sensor.");
+//				ui_app_exit();
+//			} else
+//				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//						"Succeeded in getting the handle for the default sensor of a HRM sensor.");
+//
+//			if (!create_hrm_sensor_listener(hrm_sensor_handle,
+//					hrm_led_green_sensor_handle)) {
+//				dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//						"Failed to create a HRM sensor listener.");
+//				ui_app_exit();
+//			} else
+//				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//						"Succeeded in creating a HRM sensor listener.");
+//
+//			if (!start_hrm_sensor_listener()) {
+//				dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//						"Failed to start observing the sensor events regarding a HRM sensor listener.");
+//				ui_app_exit();
+//			} else
+//				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//						"Succeeded in starting observing the sensor events regarding a HRM sensor listener.");
+//
+//			if (!check_physics_sensor_listener_is_created()) {
+//				if (!initialize_accelerometer_sensor()
+//						|| !initialize_gravity_sensor()
+//						|| !initialize_gyroscope_rotation_vector_sensor()
+//						|| !initialize_gyroscope_sensor()
+//						|| !initialize_linear_acceleration_sensor()) {
+//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+//							"Failed to get the handle for the default sensor of a Physics sensor.");
+//				} else
+//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+//							"Succeeded in getting the handle for the default sensor of a Physics sensor.");
+//
+//				if (!create_physics_sensor_listener(accelerometer_sensor_handle,
+//						gravity_sensor_handle,
+//						gyroscope_rotation_vector_sensor_hanlde,
+//						gyroscope_sensor_handle,
+//						linear_acceleration_sensor_handle)) {
+//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+//							"Failed to create a Physics sensor listener.");
+//				} else
+//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+//							"Succeeded in creating a Physics sensor listener.");
+//
+//				if (!start_physics_sensor_listener())
+//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
+//							"Failed to start observing the sensor events regarding a Physics sensor listener.");
+//				else
+//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
+//							"Succeeded in starting observing the sensor events regarding a Physics sensor listener.");
+//			}
+//			if (!check_environment_sensor_listener_is_created()) {
+//				if (!initialize_light_sensor() || !initialize_pedometer()
+//						|| !initialize_pressure_sensor()
+//						|| !initialize_sleep_monitor()) {
+//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Failed to get the handle for the default sensor of a Environment sensor.");
+//				} else
+//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Succeeded in getting the handle for the default sensor of a Environment sensor.");
+//
+//				if (!create_environment_sensor_listener(light_sensor_handle,
+//						pedometer_handle, pressure_sensor_handle,
+//						sleep_monitor_handle)) {
+//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Failed to create a Environment sensor listener.");
+//				} else
+//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Succeeded in creating a Environment sensor listener.");
+//
+//				if (!start_environment_sensor_listener())
+//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Failed to start observing the sensor events regarding a Environment sensor listener.");
+//				else
+//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
+//							"Succeeded in starting observing the sensor events regarding a Environment sensor listener.");
+//			}
+//			break;
+//		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_FOREVER:
+//			/* Show a message and terminate the application */
+//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//					"Function request_sensor_permission_response_callback() output result = PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_FOREVER");
+//			dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//					"The user denied granting permission to use a sensor privilege for an indefinite period of time.");
+//			ui_app_exit();
+//			break;
+//		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_ONCE:
+//			/* Show a message with explanation */
+//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
+//					"Function request_sensor_permission_response_callback() output result = PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_ONCE");
+//			dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
+//					"The user denied granting permission to use a sensor privilege once.");
+//			ui_app_exit();
+//			break;
+//		}
+//	}
+//}
 
