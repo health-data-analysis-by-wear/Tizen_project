@@ -17,6 +17,8 @@ sensor_listener_h sleep_monitor_listener_handle = 0;
 
 unsigned int environment_sensor_listener_event_update_interval_ms = 1000;
 
+char date_buf[64];
+
 static void light_sensor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], int events_count, void *user_data);
 static void pedometer_listener_event_callback(sensor_h sensor,
@@ -145,6 +147,13 @@ bool create_environment_sensor_listener(sensor_h light_sensor_handle,
 				"%s/%s/%d: Succeeded in registering the callback function to be invoked when sensor events are delivered via a sleep_monitor listener.",
 				__FILE__, __func__, __LINE__);
 
+	// launched time
+	struct tm* t;
+	time_t base = time(NULL);
+	t = localtime(&base);
+	snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
+			t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
+
 	return true;
 }
 
@@ -270,20 +279,14 @@ bool set_sleep_monitor_listener_event_callback() {
 /////////// Setting sensor listener event callback ///////////
 void light_sensor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], int events_count, void *user_data) {
-	struct tm* t;
-	time_t base = time(NULL);
-	t = localtime(&base);
-	char date_buf[64];
-	snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
-			t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
-
 	dlog_print(DLOG_INFO, LIGHT_SENSOR_LOG_TAG,
-			"%s/%s/%d: Function sensor_events_callback() output value = (%s, %f)",
-			__FILE__, __func__, __LINE__, date_buf, events[0].values[0]);
+			"%s/%s/%d: Function sensor_events_callback() output value = (%s, %llu, %f)",
+			__FILE__, __func__, __LINE__, date_buf, events[0].timestamp, events[0].values[0]);
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "Light output value = (%s, %f)\n", date_buf, events[0].values[0]);
+	snprintf(msg_data, 512, "Light output value = (%s, %llu, %f)\n", date_buf, events[0].timestamp,
+			events[0].values[0]);
 	append_file(filepath, msg_data);
 
 	for (int i = 0; i < events_count; i++) {
@@ -297,31 +300,22 @@ void light_sensor_listener_event_callback(sensor_h sensor,
 
 void pedometer_listener_event_callback(sensor_h sensor, sensor_event_s events[],
 		int events_count, void *user_data) {
-	struct tm* t;
-	time_t base = time(NULL);
-	t = localtime(&base);
-	char date_buf[64];
-	snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
-			t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
-
 	char * state;
 
 	sensor_pedometer_state_e pedometer_state = events[0].values[7];
 
-	if(pedometer_state == SENSOR_PEDOMETER_STATE_RUN){
+	if (pedometer_state == SENSOR_PEDOMETER_STATE_RUN) {
 		state = "SENSOR_PEDOMETER_STATE_RUN";
-	}
-	else if(pedometer_state == SENSOR_PEDOMETER_STATE_STOP){
+	} else if (pedometer_state == SENSOR_PEDOMETER_STATE_STOP) {
 		state = "SENSOR_PEDOMETER_STATE_STOP";
-	}
-	else if(pedometer_state == SENSOR_PEDOMETER_STATE_WALK){
+	} else if (pedometer_state == SENSOR_PEDOMETER_STATE_WALK) {
 		state = "SENSOR_PEDOMETER_STATE_WALK";
-	}
-	else{
+	} else {
 		state = "SENSOR_PEDOMETER_STATE_UNKNOWN";
 	}
 	//SENSOR_PEDOMETER_STATE_RUN 2 | SENSOR_PEDOMETER_STATE_STOP 0 | SENSOR_PEDOMETER_STATE_WALK 1 | SENSOR_PEDOMETER_STATE_WALK -1
-	dlog_print(DLOG_INFO, PEDOMETER_LOG_TAG, "state is %s (%d)", state, pedometer_state);
+	dlog_print(DLOG_INFO, PEDOMETER_LOG_TAG, "state is %s (%d)", state,
+			pedometer_state);
 	dlog_print(DLOG_INFO, PEDOMETER_LOG_TAG,
 			"Pedometer event received: [%s/%s/%d], number_of_steps=%f, number_of_walking_steps=%f, number_of_running_steps=%f, moving_distance=%f, calories_burned=%f, last_speed=%f, last_stepping_frequency=%f, last_pedestrian_state=%s",
 			__FILE__, __func__, __LINE__, events[0].values[0],
@@ -331,12 +325,11 @@ void pedometer_listener_event_callback(sensor_h sensor, sensor_event_s events[],
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "Pedometer output value = (%s, %f, %f, %f, %f, %f, %f, %f, %s)\n",
-			date_buf,
-			events[0].values[0],
-			events[0].values[1], events[0].values[2], events[0].values[3],
-			events[0].values[4], events[0].values[5], events[0].values[6],
-			state);
+	snprintf(msg_data, 512,
+			"Pedometer output value = (%s, %llu, %f, %f, %f, %f, %f, %f, %f, %s)\n",
+			date_buf, events[0].timestamp, events[0].values[0], events[0].values[1],
+			events[0].values[2], events[0].values[3], events[0].values[4],
+			events[0].values[5], events[0].values[6], state);
 	append_file(filepath, msg_data);
 
 	for (int i = 0; i < events_count; i++) {
@@ -348,16 +341,13 @@ void pedometer_listener_event_callback(sensor_h sensor, sensor_event_s events[],
 		float last_speed = events[i].values[5];
 		float last_stepping_frequency = events[i].values[6];
 
-		if(events[i].values[7] == SENSOR_PEDOMETER_STATE_RUN){
+		if (events[i].values[7] == SENSOR_PEDOMETER_STATE_RUN) {
 			state = "SENSOR_PEDOMETER_STATE_RUN";
-		}
-		else if(events[i].values[7] == SENSOR_PEDOMETER_STATE_STOP){
+		} else if (events[i].values[7] == SENSOR_PEDOMETER_STATE_STOP) {
 			state = "SENSOR_PEDOMETER_STATE_STOP";
-		}
-		else if(events[i].values[7] == SENSOR_PEDOMETER_STATE_WALK){
+		} else if (events[i].values[7] == SENSOR_PEDOMETER_STATE_WALK) {
 			state = "SENSOR_PEDOMETER_STATE_WALK";
-		}
-		else{
+		} else {
 			state = "SENSOR_PEDOMETER_STATE_UNKNOWN";
 		}
 
@@ -372,20 +362,14 @@ void pedometer_listener_event_callback(sensor_h sensor, sensor_event_s events[],
 
 void pressure_sensor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], int events_count, void *user_data) {
-	struct tm* t;
-	time_t base = time(NULL);
-	t = localtime(&base);
-	char date_buf[64];
-	snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
-			t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
-
 	dlog_print(DLOG_INFO, PRESSURE_SENSOR_LOG_TAG,
-			"%s/%s/%d: Function sensor_events_callback() output value = (%s, %f)",
-			__FILE__, __func__, __LINE__, date_buf, events[0].values[0]);
+			"%s/%s/%d: Function sensor_events_callback() output value = (%s, %llu, %f)",
+			__FILE__, __func__, __LINE__, date_buf, events[0].timestamp, events[0].values[0]);
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "Pressure output value = (%s, %f)\n", date_buf, events[0].values[0]);
+	snprintf(msg_data, 512, "Pressure output value = (%s, %llu, %f)\n", date_buf, events[0].timestamp,
+			events[0].values[0]);
 	append_file(filepath, msg_data);
 
 	for (int i = 0; i < events_count; i++) {
@@ -400,43 +384,32 @@ void pressure_sensor_listener_event_callback(sensor_h sensor,
 
 void sleep_monitor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], int events_count, void *user_data) {
-	struct tm* t;
-	time_t base = time(NULL);
-	t = localtime(&base);
-	char date_buf[64];
-	snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
-			t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
-
 	char * state;
 	sensor_sleep_state_e sleep_state = events[0].values[0];
-	if(sleep_state == SENSOR_SLEEP_STATE_WAKE){
+	if (sleep_state == SENSOR_SLEEP_STATE_WAKE) {
 		state = "SENSOR_SLEEP_STATE_WAKE";
-	}
-	else if(sleep_state == SENSOR_SLEEP_STATE_SLEEP){
+	} else if (sleep_state == SENSOR_SLEEP_STATE_SLEEP) {
 		state = "SENSOR_SLEEP_STATE_SLEEP";
-	}
-	else{
+	} else {
 		state = "SENSOR_SLEEP_STATE_UNKNOWN";
 	}
-	dlog_print(DLOG_INFO, SLEEP_MONITOR_LOG_TAG, "sleep state is %s(%d)", state, sleep_state);
 	dlog_print(DLOG_INFO, SLEEP_MONITOR_LOG_TAG,
-			"%s/%s/%d: Function sensor_events_callback() output value = (%s, %s)",
-			__FILE__, __func__, __LINE__, date_buf, state);
+			"%s/%s/%d: Function sensor_events_callback() output value = (%s, %llu, %s)",
+			__FILE__, __func__, __LINE__, date_buf, events[0].timestamp, state);
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "Pressure output value = (%s, %s)\n", date_buf, state);
+	snprintf(msg_data, 512, "Pressure output value = (%s, %llu, %s)\n", date_buf, events[0].timestamp,
+			state);
 	append_file(filepath, msg_data);
 
 	for (int i = 0; i < events_count; i++) {
 		int accuracy = events[i].accuracy;
-		if(events[i].values[0] == SENSOR_SLEEP_STATE_WAKE){
+		if (events[i].values[0] == SENSOR_SLEEP_STATE_WAKE) {
 			state = "SENSOR_SLEEP_STATE_WAKE";
-		}
-		else if(events[i].values[0] == SENSOR_SLEEP_STATE_SLEEP){
+		} else if (events[i].values[0] == SENSOR_SLEEP_STATE_SLEEP) {
 			state = "SENSOR_SLEEP_STATE_SLEEP";
-		}
-		else{
+		} else {
 			state = "SENSOR_SLEEP_STATE_UNKNOWN";
 		}
 

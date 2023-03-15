@@ -8,6 +8,8 @@ sensor_listener_h hrm_led_green_sensor_listener_handle = 0;
 
 unsigned int hrm_sensor_listener_event_update_interval_ms = 1000;
 
+char date_buf[64];
+
 static void hrm_sensor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], void *user_data);
 static void hrm_led_green_sensor_listener_event_callback(sensor_h sensor,
@@ -78,6 +80,13 @@ bool create_hrm_sensor_listener(sensor_h hrm_sensor_handle,
 				"%s/%s/%d: Succeeded in registering the callback function to be invoked when sensor events are delivered via a HRM LED Green sensor listener.",
 				__FILE__, __func__, __LINE__);
 
+	// launched time
+	struct tm* t;
+	time_t base = time(NULL);
+	t = localtime(&base);
+	snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
+			t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
+
 	return true;
 }
 
@@ -145,20 +154,13 @@ bool set_hrm_led_green_sensor_listener_event_callback() {
 /////////// Setting sensor listener event callback ///////////
 void hrm_sensor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], void *user_data) {
-	struct tm* t;
-	time_t base = time(NULL);
-	t = localtime(&base);
-	char date_buf[64];
-	snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
-			t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
-
 	int value = (int) events[0].values[0];
 	dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
 			"%s/%s/%d: Function sensor_events_callback() output value = %d",
 			__FILE__, __func__, __LINE__, value);
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "HRM output value = (%s, %d)\n", date_buf, value);
+	snprintf(msg_data, 512, "HRM output value = (%s, %llu, %d)\n", date_buf, events[0].timestamp, value);
 	append_file(filepath, msg_data);
 
 	//	if(!set_gatt_characteristic_value(value))
@@ -174,13 +176,6 @@ void hrm_sensor_listener_event_callback(sensor_h sensor,
 
 void hrm_led_green_sensor_listener_event_callback(sensor_h sensor,
 		sensor_event_s events[], void *user_data) {
-	struct tm* t;
-	time_t base = time(NULL);
-	t = localtime(&base);
-	char date_buf[64];
-	snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
-			t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
-
 	int value = (int) events[0].values[0];
 	dlog_print(DLOG_INFO, HRM_LED_GREEN_SENSOR_LOG_TAG,
 			"%s/%s/%d: HRM LED Green sensor_events_callback() output value = %d",
@@ -188,7 +183,8 @@ void hrm_led_green_sensor_listener_event_callback(sensor_h sensor,
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "HRM led green output value = (%s, %d)\n", date_buf, value);
+	snprintf(msg_data, 512, "HRM led green output value = (%s, %llu, %d)\n", date_buf, events[0].timestamp,
+			value);
 	append_file(filepath, msg_data);
 }
 

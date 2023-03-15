@@ -18,12 +18,23 @@ typedef struct appdata {
 	Evas_Object *conform;
 	Evas_Object *label;
 
-	Evas_Object *box_main;
+//	Evas_Object *box_main;
 
-	Evas_Object *btn_slight;
-	Evas_Object *btn_sharp;
-	Evas_Object *btn_slight_text;
-	Evas_Object *btn_sharp_text;
+//	Evas_Object *btn_slight;
+//	Evas_Object *btn_sharp;
+//	Evas_Object *btn_slight_text;
+//	Evas_Object *btn_sharp_text;
+
+	Evas_Object *grid_main;
+
+	Evas_Object *btn_level_0;
+	Evas_Object *btn_level_1;
+	Evas_Object *btn_level_2;
+	Evas_Object *btn_level_3;
+	Evas_Object *btn_level_0_text;
+	Evas_Object *btn_level_1_text;
+	Evas_Object *btn_level_2_text;
+	Evas_Object *btn_level_3_text;
 
 	Evas_Object *bg;
 
@@ -128,44 +139,92 @@ static void create_base_gui(appdata_s *ad) {
 	elm_bg_color_set(ad->bg, 255, 255, 255);
 	elm_object_content_set(ad->conform, ad->bg);
 
-	ad->box_main = elm_box_add(ad->bg);
-	elm_box_horizontal_set(ad->box_main, EINA_TRUE);
-	elm_box_padding_set(ad->box_main, 0, 0);
-	elm_object_content_set(ad->bg, ad->box_main);
-	evas_object_show(ad->box_main);
+//	ad->box_main = elm_box_add(ad->bg);
+//	elm_box_horizontal_set(ad->box_main, EINA_TRUE);
+//	elm_box_padding_set(ad->box_main, 0, 0);
+//	elm_object_content_set(ad->bg, ad->box_main);
+//	evas_object_show(ad->box_main);
 
-	// slight button
-	ad->btn_slight = elm_button_add(ad->box_main);
-	evas_object_color_set(ad->btn_slight, 0, 235, 100, 255);
-	elm_object_style_set(ad->btn_slight, "default");
-	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
-	evas_object_size_hint_weight_set(ad->btn_slight, EVAS_HINT_EXPAND,
-	EVAS_HINT_EXPAND);
-	evas_object_size_hint_align_set(ad->btn_slight, EVAS_HINT_FILL,
-	EVAS_HINT_FILL);
-	elm_object_text_set(ad->btn_slight, "<b>SLIGHT</b>");
-	evas_object_show(ad->btn_slight);
-	elm_box_pack_start(ad->box_main, ad->btn_slight);
 
-	// slight button event
-	evas_object_smart_callback_add(ad->btn_slight, "clicked", clicked_slight,
-			ad);
+	ad->grid_main = elm_grid_add(ad->conform);
+	elm_object_content_set(ad->conform, ad->grid_main);
+	evas_object_show(ad->grid_main);
 
-	// sharp button
-	ad->btn_sharp = elm_button_add(ad->box_main);
-	evas_object_color_set(ad->btn_sharp, 254, 71, 0, 255);
-	elm_object_style_set(ad->btn_slight, "default");
-	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
-	evas_object_size_hint_weight_set(ad->btn_sharp, EVAS_HINT_EXPAND,
-	EVAS_HINT_EXPAND);
-	evas_object_size_hint_align_set(ad->btn_sharp, EVAS_HINT_FILL,
-	EVAS_HINT_FILL);
-	elm_object_text_set(ad->btn_sharp, "<b>SHARP</b>");
-	evas_object_show(ad->btn_sharp);
-	elm_box_pack_end(ad->box_main, ad->btn_sharp);
+	ad->btn_level_0 = evas_object_rectangle_add(ad->grid_main);
+	evas_object_color_set(ad->btn_level_0, 0, 255, 91, 255);
+	elm_grid_pack(ad->grid_main, ad->btn_level_0, 0, 0, 50, 50);
+	evas_object_show(ad->btn_level_0);
+	ad->btn_level_0_text = elm_label_add(ad->grid_main);
+	evas_object_color_set(ad->btn_level_0_text, 255, 255, 255, 255);
+	elm_object_text_set(ad->btn_level_0_text, "<align=center><font_size=30><b>통증 없음</b></font></align>");
+	elm_grid_pack(ad->grid_main, ad->btn_level_0_text, 0, 25, 50, 10);
+	evas_object_show(ad->btn_level_0_text);
 
-	// sharp button event
-	evas_object_smart_callback_add(ad->btn_sharp, "clicked", clicked_sharp, ad);
+	ad->btn_level_1 = evas_object_rectangle_add(ad->grid_main);
+	evas_object_color_set(ad->btn_level_1, 255, 245, 85, 255);
+	elm_grid_pack(ad->grid_main, ad->btn_level_1, 50, 0, 50, 50);
+	evas_object_show(ad->btn_level_1);
+	ad->btn_level_1_text = elm_label_add(ad->grid_main);
+	evas_object_color_set(ad->btn_level_1_text, 255, 255, 255, 255);
+	elm_object_text_set(ad->btn_level_1_text,
+			"<align=center><font_size=30><b>약한 통증</b></font></align>");
+	elm_grid_pack(ad->grid_main, ad->btn_level_1_text, 50, 25, 50, 10);
+	evas_object_show(ad->btn_level_1_text);
+
+	ad->btn_level_2 = evas_object_rectangle_add(ad->grid_main);
+	evas_object_color_set(ad->btn_level_2, 255, 85, 85, 255);
+	elm_grid_pack(ad->grid_main, ad->btn_level_2, 0, 50, 50, 50);
+	evas_object_show(ad->btn_level_2);
+	ad->btn_level_2_text = elm_label_add(ad->grid_main);
+	evas_object_color_set(ad->btn_level_2_text, 255, 255, 255, 255);
+	elm_object_text_set(ad->btn_level_2_text,
+			"<align=center><font_size=30><b>보통 통증</b></font></align>");
+	elm_grid_pack(ad->grid_main, ad->btn_level_2_text, 0, 65, 50, 10);
+	evas_object_show(ad->btn_level_2_text);
+
+	ad->btn_level_3 = evas_object_rectangle_add(ad->grid_main);
+	evas_object_color_set(ad->btn_level_3, 62, 26, 23, 255);
+	elm_grid_pack(ad->grid_main, ad->btn_level_3, 50, 50, 50, 50);
+	evas_object_show(ad->btn_level_3);
+	ad->btn_level_3_text = elm_label_add(ad->grid_main);
+	evas_object_color_set(ad->btn_level_3_text, 255, 255, 255, 255);
+	elm_object_text_set(ad->btn_level_3_text,
+			"<align=center><font_size=30><b>강한 통증</b></font></align>");
+	elm_grid_pack(ad->grid_main, ad->btn_level_3_text, 50, 65, 50, 10);
+	evas_object_show(ad->btn_level_3_text);
+
+//	// slight button
+//	ad->btn_slight = elm_button_add(ad->box_main);
+//	evas_object_color_set(ad->btn_slight, 0, 235, 100, 255);
+//	elm_object_style_set(ad->btn_slight, "default");
+//	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
+//	evas_object_size_hint_weight_set(ad->btn_slight, EVAS_HINT_EXPAND,
+//	EVAS_HINT_EXPAND);
+//	evas_object_size_hint_align_set(ad->btn_slight, EVAS_HINT_FILL,
+//	EVAS_HINT_FILL);
+//	elm_object_text_set(ad->btn_slight, "<b>SLIGHT</b>");
+//	evas_object_show(ad->btn_slight);
+//	elm_box_pack_start(ad->box_main, ad->btn_slight);
+//
+//	// slight button event
+//	evas_object_smart_callback_add(ad->btn_slight, "clicked", clicked_slight,
+//			ad);
+//
+//	// sharp button
+//	ad->btn_sharp = elm_button_add(ad->box_main);
+//	evas_object_color_set(ad->btn_sharp, 254, 71, 0, 255);
+//	elm_object_style_set(ad->btn_slight, "default");
+//	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
+//	evas_object_size_hint_weight_set(ad->btn_sharp, EVAS_HINT_EXPAND,
+//	EVAS_HINT_EXPAND);
+//	evas_object_size_hint_align_set(ad->btn_sharp, EVAS_HINT_FILL,
+//	EVAS_HINT_FILL);
+//	elm_object_text_set(ad->btn_sharp, "<b>SHARP</b>");
+//	evas_object_show(ad->btn_sharp);
+//	elm_box_pack_end(ad->box_main, ad->btn_sharp);
+//
+//	// sharp button event
+//	evas_object_smart_callback_add(ad->btn_sharp, "clicked", clicked_sharp, ad);
 
 	/* Show window after base gui is set up */
 	evas_object_show(ad->win);
@@ -499,47 +558,47 @@ static void activated_screen(appdata_s *ad) {
 	elm_bg_color_set(ad->bg, 255, 255, 255);
 	elm_object_content_set(ad->conform, ad->bg);
 
-	ad->box_main = elm_box_add(ad->bg);
-	elm_box_horizontal_set(ad->box_main, EINA_TRUE);
-	elm_box_padding_set(ad->box_main, 0, 0);
-	elm_object_content_set(ad->bg, ad->box_main);
-	evas_object_show(ad->box_main);
+//	ad->box_main = elm_box_add(ad->bg);
+//	elm_box_horizontal_set(ad->box_main, EINA_TRUE);
+//	elm_box_padding_set(ad->box_main, 0, 0);
+//	elm_object_content_set(ad->bg, ad->box_main);
+//	evas_object_show(ad->box_main);
 
-	ad->nv_it = elm_naviframe_item_push(ad->nv, NULL, NULL, NULL, ad->bg, NULL);
-	elm_naviframe_item_title_enabled_set(ad->nv_it, EINA_FALSE, EINA_FALSE);
+//	ad->nv_it = elm_naviframe_item_push(ad->nv, NULL, NULL, NULL, ad->bg, NULL);
+//	elm_naviframe_item_title_enabled_set(ad->nv_it, EINA_FALSE, EINA_FALSE);
 
-	// slight button
-	ad->btn_slight = elm_button_add(ad->box_main);
-	evas_object_color_set(ad->btn_slight, 0, 235, 100, 255);
-	elm_object_style_set(ad->btn_slight, "default");
-	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
-	evas_object_size_hint_weight_set(ad->btn_slight, EVAS_HINT_EXPAND,
-	EVAS_HINT_EXPAND);
-	evas_object_size_hint_align_set(ad->btn_slight, EVAS_HINT_FILL,
-	EVAS_HINT_FILL);
-	elm_object_text_set(ad->btn_slight, "<b>SLIGHT</b>");
-	evas_object_show(ad->btn_slight);
-	elm_box_pack_start(ad->box_main, ad->btn_slight);
-
-	// slight button event
-	evas_object_smart_callback_add(ad->btn_slight, "clicked", clicked_slight,
-			ad);
-
-	// sharp button
-	ad->btn_sharp = elm_button_add(ad->box_main);
-	evas_object_color_set(ad->btn_sharp, 254, 71, 0, 255);
-	elm_object_style_set(ad->btn_slight, "default");
-	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
-	evas_object_size_hint_weight_set(ad->btn_sharp, EVAS_HINT_EXPAND,
-	EVAS_HINT_EXPAND);
-	evas_object_size_hint_align_set(ad->btn_sharp, EVAS_HINT_FILL,
-	EVAS_HINT_FILL);
-	elm_object_text_set(ad->btn_sharp, "<b>SHARP</b>");
-	evas_object_show(ad->btn_sharp);
-	elm_box_pack_end(ad->box_main, ad->btn_sharp);
-
-	// sharp button event
-	evas_object_smart_callback_add(ad->btn_sharp, "clicked", clicked_sharp, ad);
+//	// slight button
+//	ad->btn_slight = elm_button_add(ad->box_main);
+//	evas_object_color_set(ad->btn_slight, 0, 235, 100, 255);
+//	elm_object_style_set(ad->btn_slight, "default");
+//	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
+//	evas_object_size_hint_weight_set(ad->btn_slight, EVAS_HINT_EXPAND,
+//	EVAS_HINT_EXPAND);
+//	evas_object_size_hint_align_set(ad->btn_slight, EVAS_HINT_FILL,
+//	EVAS_HINT_FILL);
+//	elm_object_text_set(ad->btn_slight, "<b>SLIGHT</b>");
+//	evas_object_show(ad->btn_slight);
+//	elm_box_pack_start(ad->box_main, ad->btn_slight);
+//
+//	// slight button event
+//	evas_object_smart_callback_add(ad->btn_slight, "clicked", clicked_slight,
+//			ad);
+//
+//	// sharp button
+//	ad->btn_sharp = elm_button_add(ad->box_main);
+//	evas_object_color_set(ad->btn_sharp, 254, 71, 0, 255);
+//	elm_object_style_set(ad->btn_slight, "default");
+//	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
+//	evas_object_size_hint_weight_set(ad->btn_sharp, EVAS_HINT_EXPAND,
+//	EVAS_HINT_EXPAND);
+//	evas_object_size_hint_align_set(ad->btn_sharp, EVAS_HINT_FILL,
+//	EVAS_HINT_FILL);
+//	elm_object_text_set(ad->btn_sharp, "<b>SHARP</b>");
+//	evas_object_show(ad->btn_sharp);
+//	elm_box_pack_end(ad->box_main, ad->btn_sharp);
+//
+//	// sharp button event
+//	evas_object_smart_callback_add(ad->btn_sharp, "clicked", clicked_sharp, ad);
 
 	/* Label */
 	/* Create an actual view of the base gui.
@@ -1120,8 +1179,7 @@ bool check_and_request_sensor_permission() {
 			}
 
 			if (!check_environment_sensor_listener_is_created()) {
-				if (!initialize_light_sensor()
-						|| !initialize_pedometer()
+				if (!initialize_light_sensor() || !initialize_pedometer()
 						|| !initialize_pressure_sensor()
 						|| !initialize_sleep_monitor()) {
 					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
