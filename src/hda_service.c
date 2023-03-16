@@ -65,6 +65,8 @@ static void clicked_slight(void *user_data, Evas* e, Evas_Object *obj,
 static void clicked_sharp(void *user_data, Evas* e, Evas_Object *obj,
 		void *event_info);
 
+static Eina_Bool _do_animation(void *data, double pos);
+
 bool check_hrm_sensor_is_supported();
 bool initialize_hrm_sensor();
 bool initialize_hrm_led_green_sensor();
@@ -159,6 +161,7 @@ static void create_base_gui(appdata_s *ad) {
 	elm_object_text_set(ad->btn_level_0_text, "<align=center><font_size=30><b>통증 없음</b></font></align>");
 	elm_grid_pack(ad->grid_main, ad->btn_level_0_text, 0, 25, 50, 10);
 	evas_object_show(ad->btn_level_0_text);
+	evas_object_event_callback_add(ad->btn_level_0, EVAS_CALLBACK_MOUSE_DOWN, clicked_slight, ad);
 
 	ad->btn_level_1 = evas_object_rectangle_add(ad->grid_main);
 	evas_object_color_set(ad->btn_level_1, 255, 245, 85, 255);
@@ -170,6 +173,7 @@ static void create_base_gui(appdata_s *ad) {
 			"<align=center><font_size=30><b>약한 통증</b></font></align>");
 	elm_grid_pack(ad->grid_main, ad->btn_level_1_text, 50, 25, 50, 10);
 	evas_object_show(ad->btn_level_1_text);
+	evas_object_event_callback_add(ad->btn_level_1, EVAS_CALLBACK_MOUSE_DOWN, clicked_slight, ad);
 
 	ad->btn_level_2 = evas_object_rectangle_add(ad->grid_main);
 	evas_object_color_set(ad->btn_level_2, 255, 85, 85, 255);
@@ -181,6 +185,7 @@ static void create_base_gui(appdata_s *ad) {
 			"<align=center><font_size=30><b>보통 통증</b></font></align>");
 	elm_grid_pack(ad->grid_main, ad->btn_level_2_text, 0, 65, 50, 10);
 	evas_object_show(ad->btn_level_2_text);
+	evas_object_event_callback_add(ad->btn_level_2, EVAS_CALLBACK_MOUSE_DOWN, clicked_slight, ad);
 
 	ad->btn_level_3 = evas_object_rectangle_add(ad->grid_main);
 	evas_object_color_set(ad->btn_level_3, 62, 26, 23, 255);
@@ -192,6 +197,7 @@ static void create_base_gui(appdata_s *ad) {
 			"<align=center><font_size=30><b>강한 통증</b></font></align>");
 	elm_grid_pack(ad->grid_main, ad->btn_level_3_text, 50, 65, 50, 10);
 	evas_object_show(ad->btn_level_3_text);
+	evas_object_event_callback_add(ad->btn_level_3, EVAS_CALLBACK_MOUSE_DOWN, clicked_slight, ad);
 
 //	// slight button
 //	ad->btn_slight = elm_button_add(ad->box_main);
@@ -1696,3 +1702,11 @@ void request_physics_sensor_permission_response_callback(ppm_call_cause_e cause,
 //	}
 //}
 
+
+static Eina_Bool _do_animation(void *data, double pos)
+{
+    Evas_Object *dest = data;
+//    evas_object_color_set(dest, 50, 50, 50, 255);
+//    evas_object_size_hint_min_set(rect, 100, 230*pos);
+    return ECORE_CALLBACK_RENEW;
+}

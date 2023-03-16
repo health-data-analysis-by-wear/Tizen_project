@@ -399,7 +399,7 @@ void sleep_monitor_listener_event_callback(sensor_h sensor,
 
 	char * filepath = get_write_filepath("hda_sensor_data.txt");
 	char msg_data[512];
-	snprintf(msg_data, 512, "Pressure output value = (%s, %llu, %s)\n", date_buf, events[0].timestamp,
+	snprintf(msg_data, 512, "Sleep monitor output value = (%s, %llu, %s)\n", date_buf, events[0].timestamp,
 			state);
 	append_file(filepath, msg_data);
 

@@ -15,3 +15,17 @@
 460	671	0	hda_service	fb473327bc07379
 3	477	0	src/hda_service.o	6f5931152149eae3
 477	686	0	hda_service	fb473327bc07379
+5	2318	0	src/hda_service.o	6f5931152149eae3
+2318	3408	0	hda_service	fb473327bc07379
+3	455	0	src/hda_service.o	6f5931152149eae3
+455	664	0	hda_service	fb473327bc07379
+3	433	0	src/hda_service.o	6f5931152149eae3
+434	646	0	hda_service	fb473327bc07379
+4	439	0	src/hda_service.o	6f5931152149eae3
+439	648	0	hda_service	fb473327bc07379
+3	438	0	src/hda_service.o	6f5931152149eae3
+438	649	0	hda_service	fb473327bc07379
+3	444	0	src/hda_service.o	6f5931152149eae3
+444	652	0	hda_service	fb473327bc07379
+4	475	0	src/sensor/environment_listener.o	38b0a598c90fbd2d
+475	701	0	hda_service	fb473327bc07379
