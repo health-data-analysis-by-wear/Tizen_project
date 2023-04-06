@@ -10,6 +10,8 @@
 #include "bluetooth/gatt/characteristic.h"
 #include "bluetooth/gatt/descriptor.h"
 #include "bluetooth/le/advertiser.h"
+#include<device/power.h>
+#include <feedback.h>
 
 #include <app_common.h>
 
@@ -18,14 +20,11 @@ typedef struct appdata {
 	Evas_Object *conform;
 	Evas_Object *label;
 
-//	Evas_Object *box_main;
-
-//	Evas_Object *btn_slight;
-//	Evas_Object *btn_sharp;
-//	Evas_Object *btn_slight_text;
-//	Evas_Object *btn_sharp_text;
-
+	Evas_Object *screen;
 	Evas_Object *grid_main;
+	Evas_Object *grid_cover;
+
+	Evas_Object *btn_unlock;
 
 	Evas_Object *btn_level_0;
 	Evas_Object *btn_level_1;
@@ -60,12 +59,65 @@ sensor_h sleep_monitor_handle = 0;
 
 sqlite3 *sql_db;
 
-static void clicked_slight(void *user_data, Evas* e, Evas_Object *obj,
+static void clicked_level_0(void *user_data, Evas* e, Evas_Object *obj,
 		void *event_info);
-static void clicked_sharp(void *user_data, Evas* e, Evas_Object *obj,
+static void clicked_level_1(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info);
+static void clicked_level_2(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info);
+static void clicked_level_3(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info);
+static void clicked_unlock(void *user_data, Evas* e, Evas_Object *obj,
 		void *event_info);
 
-static Eina_Bool _do_animation(void *data, double pos);
+static void clicked_up_level_0(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info);
+static void clicked_up_level_1(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info);
+static void clicked_up_level_2(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info);
+static void clicked_up_level_3(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info);
+
+static Eina_Bool click_animation_level_0(void *data);
+static Eina_Bool click_animation_level_1(void *data);
+static Eina_Bool click_animation_level_2(void *data);
+static Eina_Bool click_animation_level_3(void *data);
+static Eina_Bool click_up_animation_level_0(void *data);
+static Eina_Bool click_up_animation_level_1(void *data);
+static Eina_Bool click_up_animation_level_2(void *data);
+static Eina_Bool click_up_animation_level_3(void *data);
+
+static void _set_cover_lock(void *data, Ecore_Thread *thread, void *msg_data);
+static void _encore_thread_cover_lock(void *data, Ecore_Thread *thread);
+static void _end_cover_lock_thread(void *data, Ecore_Thread *thread);
+
+static int cover_lock_counter = 0;
+static int cover_lock_parameter = 10;
+
+// 1 is pressed, 0 is detached;
+static int level_0_state = 0;
+static int level_1_state = 0;
+static int level_2_state = 0;
+static int level_3_state = 0;
+
+static int long_press_parameter = 2;
+static int level_0_pressed_time = 0;
+static int level_1_pressed_time = 0;
+static int level_2_pressed_time = 0;
+static int level_3_pressed_time = 0;
+
+static void _encore_thread_check_long_press(void *data, Ecore_Thread *thread);
+
+static int color_level_0[] = { 0, 255, 91, 255 };
+static int color_level_1[] = { 254, 199, 86, 255 };
+static int color_level_2[] = { 255, 85, 85, 255 };
+static int color_level_3[] = { 126, 33, 24, 255 };
+
+static int hover_color_level_0[] = { 0, 212, 28, 255 };
+static int hover_color_level_1[] = { 253, 155, 29, 255 };
+static int hover_color_level_2[] = { 255, 9, 9, 255 };
+static int hover_color_level_3[] = { 62, 4, 2, 255 };
 
 bool check_hrm_sensor_is_supported();
 bool initialize_hrm_sensor();
@@ -141,120 +193,127 @@ static void create_base_gui(appdata_s *ad) {
 	elm_bg_color_set(ad->bg, 255, 255, 255);
 	elm_object_content_set(ad->conform, ad->bg);
 
-//	ad->box_main = elm_box_add(ad->bg);
-//	elm_box_horizontal_set(ad->box_main, EINA_TRUE);
-//	elm_box_padding_set(ad->box_main, 0, 0);
-//	elm_object_content_set(ad->bg, ad->box_main);
-//	evas_object_show(ad->box_main);
+	ad->screen = elm_grid_add(ad->conform);
+	elm_object_content_set(ad->conform, ad->screen);
+	evas_object_show(ad->screen);
 
+	Evas_Object *screen_bg = elm_bg_add(ad->screen);
+	elm_bg_color_set(screen_bg, 255, 255, 255);
+	elm_grid_pack(ad->screen, screen_bg, 0, 0, 100, 100);
+	evas_object_show(screen_bg);
 
-	ad->grid_main = elm_grid_add(ad->conform);
-	elm_object_content_set(ad->conform, ad->grid_main);
+	ad->grid_main = elm_grid_add(ad->screen);
+	elm_grid_pack(ad->screen, ad->grid_main, 0, 0, 100, 100);
 	evas_object_show(ad->grid_main);
 
 	ad->btn_level_0 = evas_object_rectangle_add(ad->grid_main);
-	evas_object_color_set(ad->btn_level_0, 0, 255, 91, 255);
+	evas_object_color_set(ad->btn_level_0, color_level_0[0], color_level_0[1],
+			color_level_0[2], color_level_0[3]);
 	elm_grid_pack(ad->grid_main, ad->btn_level_0, 0, 0, 50, 50);
 	evas_object_show(ad->btn_level_0);
 	ad->btn_level_0_text = elm_label_add(ad->grid_main);
 	evas_object_color_set(ad->btn_level_0_text, 255, 255, 255, 255);
-	elm_object_text_set(ad->btn_level_0_text, "<align=center><font_size=30><b>통증 없음</b></font></align>");
+	elm_object_text_set(ad->btn_level_0_text,
+			"<align=center><font_size=30><b>없음</b></font></align>");
 	elm_grid_pack(ad->grid_main, ad->btn_level_0_text, 0, 25, 50, 10);
 	evas_object_show(ad->btn_level_0_text);
-	evas_object_event_callback_add(ad->btn_level_0, EVAS_CALLBACK_MOUSE_DOWN, clicked_slight, ad);
+	evas_object_event_callback_add(ad->btn_level_0, EVAS_CALLBACK_MOUSE_DOWN,
+			clicked_level_0, ad);
+	evas_object_event_callback_add(ad->btn_level_0, EVAS_CALLBACK_MOUSE_UP,
+			clicked_up_level_0, ad);
+	evas_object_event_callback_add(ad->btn_level_0_text,
+			EVAS_CALLBACK_MOUSE_DOWN, clicked_level_0, ad);
+	evas_object_event_callback_add(ad->btn_level_0_text, EVAS_CALLBACK_MOUSE_UP,
+			clicked_up_level_0, ad);
 
 	ad->btn_level_1 = evas_object_rectangle_add(ad->grid_main);
-	evas_object_color_set(ad->btn_level_1, 255, 245, 85, 255);
+	evas_object_color_set(ad->btn_level_1, color_level_1[0], color_level_1[1],
+			color_level_1[2], color_level_1[3]);
 	elm_grid_pack(ad->grid_main, ad->btn_level_1, 50, 0, 50, 50);
 	evas_object_show(ad->btn_level_1);
 	ad->btn_level_1_text = elm_label_add(ad->grid_main);
 	evas_object_color_set(ad->btn_level_1_text, 255, 255, 255, 255);
 	elm_object_text_set(ad->btn_level_1_text,
-			"<align=center><font_size=30><b>약한 통증</b></font></align>");
+			"<align=center><font_size=30><b>경증</b></font></align>");
 	elm_grid_pack(ad->grid_main, ad->btn_level_1_text, 50, 25, 50, 10);
 	evas_object_show(ad->btn_level_1_text);
-	evas_object_event_callback_add(ad->btn_level_1, EVAS_CALLBACK_MOUSE_DOWN, clicked_slight, ad);
+	evas_object_event_callback_add(ad->btn_level_1, EVAS_CALLBACK_MOUSE_DOWN,
+			clicked_level_1, ad);
+	evas_object_event_callback_add(ad->btn_level_1, EVAS_CALLBACK_MOUSE_UP,
+			clicked_up_level_1, ad);
+	evas_object_event_callback_add(ad->btn_level_1_text,
+			EVAS_CALLBACK_MOUSE_DOWN, clicked_level_1, ad);
+	evas_object_event_callback_add(ad->btn_level_1_text, EVAS_CALLBACK_MOUSE_UP,
+			clicked_up_level_1, ad);
 
 	ad->btn_level_2 = evas_object_rectangle_add(ad->grid_main);
-	evas_object_color_set(ad->btn_level_2, 255, 85, 85, 255);
+	evas_object_color_set(ad->btn_level_2, color_level_2[0], color_level_2[1],
+			color_level_2[2], color_level_2[3]);
 	elm_grid_pack(ad->grid_main, ad->btn_level_2, 0, 50, 50, 50);
 	evas_object_show(ad->btn_level_2);
 	ad->btn_level_2_text = elm_label_add(ad->grid_main);
 	evas_object_color_set(ad->btn_level_2_text, 255, 255, 255, 255);
 	elm_object_text_set(ad->btn_level_2_text,
-			"<align=center><font_size=30><b>보통 통증</b></font></align>");
+			"<align=center><font_size=30><b>심함</b></font></align>");
 	elm_grid_pack(ad->grid_main, ad->btn_level_2_text, 0, 65, 50, 10);
 	evas_object_show(ad->btn_level_2_text);
-	evas_object_event_callback_add(ad->btn_level_2, EVAS_CALLBACK_MOUSE_DOWN, clicked_slight, ad);
+	evas_object_event_callback_add(ad->btn_level_2, EVAS_CALLBACK_MOUSE_DOWN,
+			clicked_level_2, ad);
+	evas_object_event_callback_add(ad->btn_level_2, EVAS_CALLBACK_MOUSE_UP,
+			clicked_up_level_2, ad);
+	evas_object_event_callback_add(ad->btn_level_2_text,
+			EVAS_CALLBACK_MOUSE_DOWN, clicked_level_2, ad);
+	evas_object_event_callback_add(ad->btn_level_2_text, EVAS_CALLBACK_MOUSE_UP,
+			clicked_up_level_2, ad);
 
 	ad->btn_level_3 = evas_object_rectangle_add(ad->grid_main);
-	evas_object_color_set(ad->btn_level_3, 62, 26, 23, 255);
+	evas_object_color_set(ad->btn_level_3, color_level_3[0], color_level_3[1],
+			color_level_3[2], color_level_3[3]);
 	elm_grid_pack(ad->grid_main, ad->btn_level_3, 50, 50, 50, 50);
 	evas_object_show(ad->btn_level_3);
 	ad->btn_level_3_text = elm_label_add(ad->grid_main);
 	evas_object_color_set(ad->btn_level_3_text, 255, 255, 255, 255);
 	elm_object_text_set(ad->btn_level_3_text,
-			"<align=center><font_size=30><b>강한 통증</b></font></align>");
+			"<align=center><font_size=30><b>최악</b></font></align>");
 	elm_grid_pack(ad->grid_main, ad->btn_level_3_text, 50, 65, 50, 10);
 	evas_object_show(ad->btn_level_3_text);
-	evas_object_event_callback_add(ad->btn_level_3, EVAS_CALLBACK_MOUSE_DOWN, clicked_slight, ad);
+	evas_object_event_callback_add(ad->btn_level_3, EVAS_CALLBACK_MOUSE_DOWN,
+			clicked_level_3, ad);
+	evas_object_event_callback_add(ad->btn_level_3, EVAS_CALLBACK_MOUSE_UP,
+			clicked_up_level_3, ad);
+	evas_object_event_callback_add(ad->btn_level_3_text,
+			EVAS_CALLBACK_MOUSE_DOWN, clicked_level_3, ad);
+	evas_object_event_callback_add(ad->btn_level_3_text, EVAS_CALLBACK_MOUSE_UP,
+			clicked_up_level_3, ad);
 
-//	// slight button
-//	ad->btn_slight = elm_button_add(ad->box_main);
-//	evas_object_color_set(ad->btn_slight, 0, 235, 100, 255);
-//	elm_object_style_set(ad->btn_slight, "default");
-//	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
-//	evas_object_size_hint_weight_set(ad->btn_slight, EVAS_HINT_EXPAND,
-//	EVAS_HINT_EXPAND);
-//	evas_object_size_hint_align_set(ad->btn_slight, EVAS_HINT_FILL,
-//	EVAS_HINT_FILL);
-//	elm_object_text_set(ad->btn_slight, "<b>SLIGHT</b>");
-//	evas_object_show(ad->btn_slight);
-//	elm_box_pack_start(ad->box_main, ad->btn_slight);
-//
-//	// slight button event
-//	evas_object_smart_callback_add(ad->btn_slight, "clicked", clicked_slight,
-//			ad);
-//
-//	// sharp button
-//	ad->btn_sharp = elm_button_add(ad->box_main);
-//	evas_object_color_set(ad->btn_sharp, 254, 71, 0, 255);
-//	elm_object_style_set(ad->btn_slight, "default");
-//	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
-//	evas_object_size_hint_weight_set(ad->btn_sharp, EVAS_HINT_EXPAND,
-//	EVAS_HINT_EXPAND);
-//	evas_object_size_hint_align_set(ad->btn_sharp, EVAS_HINT_FILL,
-//	EVAS_HINT_FILL);
-//	elm_object_text_set(ad->btn_sharp, "<b>SHARP</b>");
-//	evas_object_show(ad->btn_sharp);
-//	elm_box_pack_end(ad->box_main, ad->btn_sharp);
-//
-//	// sharp button event
-//	evas_object_smart_callback_add(ad->btn_sharp, "clicked", clicked_sharp, ad);
+	// cover
+	ad->grid_cover = elm_grid_add(ad->screen);
+	elm_grid_pack(ad->screen, ad->grid_cover, 0, 0, 100, 100);
+	evas_object_show(ad->grid_cover);
 
-	/* Show window after base gui is set up */
+	Evas_Object *cover_bg = elm_bg_add(ad->grid_cover);
+	elm_bg_color_set(cover_bg, 0, 0, 0);
+	elm_grid_pack(ad->grid_cover, cover_bg, 0, 0, 100, 100);
+	evas_object_show(cover_bg);
+
+	ad->btn_unlock = elm_button_add(ad->grid_cover);
+	evas_object_color_set(ad->btn_unlock, 0, 255, 91, 255);
+	elm_object_text_set(ad->btn_unlock,
+			"<align=center><font_size=30><b>활성화</b></font></align>");
+	elm_grid_pack(ad->grid_cover, ad->btn_unlock, 25, 40, 50, 20);
+	evas_object_smart_callback_add(ad->btn_unlock, "clicked", clicked_unlock,
+			ad);
+	evas_object_show(ad->btn_unlock);
+
 	evas_object_show(ad->win);
 }
-
-/////////////////////////////////////////////
-
-//QueryData* msgdata;
-//
-//static Eina_Bool
-//layout_pop_cb(void *data, Elm_Object_Item *it)
-//{
-//    if(msgdata)
-//	free(msgdata); /*need to free this structure in pop_cb of current layout*/
-//    return EINA_TRUE;
-//}
-
-////////////////////////////////////////////
 
 static bool app_create(void *data) {
 	/* Hook to take necessary actions before main event loop starts
 	 Initialize UI resources and application's data
 	 If this function returns true, the main loop of application starts
 	 If this function returns false, the application is terminated */
+
 	int retval;
 	bt_adapter_state_e bluetooth_adapter_state;
 
@@ -375,47 +434,6 @@ static bool app_create(void *data) {
 		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG,
 				"Succeeded in starting advertising with passed advertiser and advertising parameters.");
 
-//	int ret = initdb();
-//	dlog_print(DLOG_INFO, SQLITE3_LOG_TAG, "Init Sqlite : %i", ret);
-
-//	/*allocate msgdata memory. this will be used for retrieving data from database*/
-//	msgdata = (QueryData*) calloc (1, sizeof(QueryData));
-//
-//	int num_of_rows = 0;
-//	int num_of_rows2 = 0;
-//	/*retrieve all msgdata from database*/
-//	int ret2 = getTotalMsgItemsCount(&num_of_rows2);
-//	if(!ret2){
-//		dlog_print(DLOG_INFO, SQLITE3_LOG_TAG, "Total rows found: [%d]", num_of_rows2);
-//	} else {
-//		dlog_print(DLOG_ERROR, SQLITE3_LOG_TAG, "row count error!");
-//	}
-//
-//
-//	int ret = getAllMsgFromDb(&msgdata, &num_of_rows); /*sending msgdata reference to get data from database; num_of_rows reference  to get count of rows*/
-//	if(!ret){
-//		dlog_print(DLOG_INFO, SQLITE3_LOG_TAG, "Retrieved [%d] rows successfully!", num_of_rows);
-//	} else {
-//		dlog_print(DLOG_ERROR, SQLITE3_LOG_TAG, "Data retrieval error!");
-//	}
-//	dlog_print(DLOG_INFO, SQLITE3_LOG_TAG, "Check Size of sqlite : %s", msgdata->msg);
-
-//	char* buf = "This is Test Code. Hi.";
-//	char *filepath;
-//	filepath=get_write_filepath("text.txt"); // "text.txt" is file name
-//	dlog_print(DLOG_WARN, SQLITE3_LOG_TAG, "CHECK [%s]", filepath);
-//	write_file(filepath,buf);
-//
-//	char* temp = read_file(filepath);
-//	dlog_print(DLOG_WARN, SQLITE3_LOG_TAG, "READ [%s]", temp);
-
-//	int ret = sqlite3_check_useable_and_open(sql_db, "sample.db");
-//	dlog_print(DLOG_WARN, SQLITE3_LOG_TAG, "check: %i", ret);
-//	sqlitehelper_open();
-
-//	char * filepath = get_write_filepath("hda_sensor_data.txt");
-//	read_file(filepath);
-
 	return true;
 }
 
@@ -425,10 +443,23 @@ static void app_control(app_control_h app_control, void *data) {
 
 static void app_pause(void *data) {
 	/* Take necessary actions when application becomes invisible. */
+	appdata_s *ad = data;
+
+	dlog_print(DLOG_WARN, "HDA_SERVICE", "Pause");
 }
 
 static void app_resume(void *data) {
 	/* Take necessary actions when application becomes visible. */
+	device_power_request_lock(POWER_LOCK_DISPLAY, 0);
+	device_power_request_lock(POWER_LOCK_CPU, 0);
+
+	appdata_s *ad = data;
+
+	ecore_thread_feedback_run(_encore_thread_cover_lock, _set_cover_lock,
+			_end_cover_lock_thread, NULL, ad, EINA_FALSE);
+	ecore_thread_feedback_run(_encore_thread_check_long_press, NULL, NULL, NULL,
+			ad, EINA_FALSE);
+
 	if (!check_and_request_sensor_permission()) {
 		dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
 				"Failed to check if an application has permission to use the sensor privilege.");
@@ -559,95 +590,273 @@ int main(int argc, char *argv[]) {
 ///////////////////////////// Screen /////////////////////////////
 //////////////////////////////////////////////////////////////////
 
-static void activated_screen(appdata_s *ad) {
-	ad->bg = elm_bg_add(ad->nv);
-	elm_bg_color_set(ad->bg, 255, 255, 255);
-	elm_object_content_set(ad->conform, ad->bg);
+static void clicked_level_0(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info) {
+	appdata_s *ad = user_data;
 
-//	ad->box_main = elm_box_add(ad->bg);
-//	elm_box_horizontal_set(ad->box_main, EINA_TRUE);
-//	elm_box_padding_set(ad->box_main, 0, 0);
-//	elm_object_content_set(ad->bg, ad->box_main);
-//	evas_object_show(ad->box_main);
-
-//	ad->nv_it = elm_naviframe_item_push(ad->nv, NULL, NULL, NULL, ad->bg, NULL);
-//	elm_naviframe_item_title_enabled_set(ad->nv_it, EINA_FALSE, EINA_FALSE);
-
-//	// slight button
-//	ad->btn_slight = elm_button_add(ad->box_main);
-//	evas_object_color_set(ad->btn_slight, 0, 235, 100, 255);
-//	elm_object_style_set(ad->btn_slight, "default");
-//	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
-//	evas_object_size_hint_weight_set(ad->btn_slight, EVAS_HINT_EXPAND,
-//	EVAS_HINT_EXPAND);
-//	evas_object_size_hint_align_set(ad->btn_slight, EVAS_HINT_FILL,
-//	EVAS_HINT_FILL);
-//	elm_object_text_set(ad->btn_slight, "<b>SLIGHT</b>");
-//	evas_object_show(ad->btn_slight);
-//	elm_box_pack_start(ad->box_main, ad->btn_slight);
-//
-//	// slight button event
-//	evas_object_smart_callback_add(ad->btn_slight, "clicked", clicked_slight,
-//			ad);
-//
-//	// sharp button
-//	ad->btn_sharp = elm_button_add(ad->box_main);
-//	evas_object_color_set(ad->btn_sharp, 254, 71, 0, 255);
-//	elm_object_style_set(ad->btn_slight, "default");
-//	evas_object_size_hint_min_set(ad->btn_slight, EVAS_HINT_EXPAND, 500);
-//	evas_object_size_hint_weight_set(ad->btn_sharp, EVAS_HINT_EXPAND,
-//	EVAS_HINT_EXPAND);
-//	evas_object_size_hint_align_set(ad->btn_sharp, EVAS_HINT_FILL,
-//	EVAS_HINT_FILL);
-//	elm_object_text_set(ad->btn_sharp, "<b>SHARP</b>");
-//	evas_object_show(ad->btn_sharp);
-//	elm_box_pack_end(ad->box_main, ad->btn_sharp);
-//
-//	// sharp button event
-//	evas_object_smart_callback_add(ad->btn_sharp, "clicked", clicked_sharp, ad);
-
-	/* Label */
-	/* Create an actual view of the base gui.
-	 Modify this part to change the view. */
-//	ad->label = elm_label_add(ad->conform);
-//	elm_object_text_set(ad->label, "<align=center>Hello Tizen</align>");
-//	evas_object_size_hint_weight_set(ad->label, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
-//	elm_object_content_set(ad->conform, ad->label);
+	cover_lock_counter = 0;
+	ecore_animator_add(click_animation_level_0, ad);
+	level_0_state = 1;
 }
 
-/////////////////////////////////////////////////////////////////
-///////////////////////////// Event /////////////////////////////
-/////////////////////////////////////////////////////////////////
-
-static void clicked_slight(void *user_data, Evas* e, Evas_Object *obj,
+static void clicked_up_level_0(void *user_data, Evas* e, Evas_Object *obj,
 		void *event_info) {
-	dlog_print(DLOG_INFO, "HDA_EVENT", "Slight");
-
-	Evas_Object *popup;
 	appdata_s *ad = user_data;
-	popup = elm_popup_add(ad->win);
-	elm_object_style_set(popup, "toast");
-	evas_object_size_hint_weight_set(popup, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
-	eext_object_event_callback_add(popup, EEXT_CALLBACK_BACK,
-			eext_popup_back_cb, NULL);
-	elm_object_text_set(popup, "Clicked slight");
-	elm_popup_timeout_set(popup, 2.0);
-	evas_object_show(popup);
+
+	cover_lock_counter = 0;
+	ecore_animator_add(click_up_animation_level_0, ad);
+	level_0_state = 0;
+	level_0_pressed_time = 0;
 }
-static void clicked_sharp(void *user_data, Evas* e, Evas_Object *obj,
-		void *event_info) {
-	dlog_print(DLOG_INFO, "HDA_EVENT", "Sharp");
 
-	Evas_Object *popup;
+static void clicked_level_1(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info) {
 	appdata_s *ad = user_data;
-	popup = elm_popup_add(ad->win);
-	elm_object_style_set(popup, "toast");
-	evas_object_size_hint_weight_set(popup, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
-	eext_object_event_callback_add(popup, EEXT_CALLBACK_BACK,
-			eext_popup_back_cb, NULL);
-	elm_object_text_set(popup, "Clicked sharp");
-	elm_popup_timeout_set(popup, 3.0);
-	evas_object_show(popup);
+
+	cover_lock_counter = 0;
+	ecore_animator_add(click_animation_level_1, ad);
+	level_1_state = 1;
+}
+
+static void clicked_up_level_1(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info) {
+	appdata_s *ad = user_data;
+
+	cover_lock_counter = 0;
+	ecore_animator_add(click_up_animation_level_1, ad);
+	level_1_state = 0;
+	level_1_pressed_time = 0;
+}
+
+static void clicked_level_2(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info) {
+	appdata_s *ad = user_data;
+
+	cover_lock_counter = 0;
+	ecore_animator_add(click_animation_level_2, ad);
+	level_2_state = 1;
+}
+
+static void clicked_up_level_2(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info) {
+	appdata_s *ad = user_data;
+
+	cover_lock_counter = 0;
+	ecore_animator_add(click_up_animation_level_2, ad);
+	level_2_state = 0;
+	level_2_pressed_time = 0;
+}
+
+static void clicked_level_3(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info) {
+	appdata_s *ad = user_data;
+
+	cover_lock_counter = 0;
+	ecore_animator_add(click_animation_level_3, ad);
+	level_3_state = 1;
+}
+
+static void clicked_up_level_3(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info) {
+	appdata_s *ad = user_data;
+
+	cover_lock_counter = 0;
+	ecore_animator_add(click_up_animation_level_3, ad);
+	level_3_state = 0;
+	level_3_pressed_time = 0;
+}
+
+static Eina_Bool click_animation_level_0(void *data) {
+	appdata_s *ad = data;
+	evas_object_color_set(ad->btn_level_0, hover_color_level_0[0],
+			hover_color_level_0[1], hover_color_level_0[2],
+			hover_color_level_0[3]);
+	evas_object_color_set(ad->btn_level_0_text, 220, 220, 220, 220);
+	return ECORE_CALLBACK_RENEW;
+}
+static Eina_Bool click_up_animation_level_0(void *data) {
+	appdata_s *ad = data;
+	evas_object_color_set(ad->btn_level_0, color_level_0[0], color_level_0[1],
+			color_level_0[2], color_level_0[3]);
+	evas_object_color_set(ad->btn_level_0_text, 255, 255, 255, 255);
+	return ECORE_CALLBACK_RENEW;
+}
+
+static Eina_Bool click_animation_level_1(void *data) {
+	appdata_s *ad = data;
+	evas_object_color_set(ad->btn_level_1, hover_color_level_1[0],
+			hover_color_level_1[1], hover_color_level_1[2],
+			hover_color_level_1[3]);
+	evas_object_color_set(ad->btn_level_1_text, 220, 220, 220, 220);
+	return ECORE_CALLBACK_RENEW;
+}
+static Eina_Bool click_up_animation_level_1(void *data) {
+	appdata_s *ad = data;
+	evas_object_color_set(ad->btn_level_1, color_level_1[0], color_level_1[1],
+			color_level_1[2], color_level_1[3]);
+	evas_object_color_set(ad->btn_level_1_text, 255, 255, 255, 255);
+	return ECORE_CALLBACK_RENEW;
+}
+
+static Eina_Bool click_animation_level_2(void *data) {
+	appdata_s *ad = data;
+	evas_object_color_set(ad->btn_level_2, hover_color_level_2[0],
+			hover_color_level_2[1], hover_color_level_2[2],
+			hover_color_level_2[3]);
+	evas_object_color_set(ad->btn_level_2_text, 220, 220, 220, 220);
+	return ECORE_CALLBACK_RENEW;
+}
+static Eina_Bool click_up_animation_level_2(void *data) {
+	appdata_s *ad = data;
+	evas_object_color_set(ad->btn_level_2, color_level_2[0], color_level_2[1],
+			color_level_2[2], color_level_2[3]);
+	evas_object_color_set(ad->btn_level_2_text, 255, 255, 255, 255);
+	return ECORE_CALLBACK_RENEW;
+}
+
+static Eina_Bool click_animation_level_3(void *data) {
+	appdata_s *ad = data;
+	evas_object_color_set(ad->btn_level_3, hover_color_level_3[0],
+			hover_color_level_3[1], hover_color_level_3[2],
+			hover_color_level_3[3]);
+	evas_object_color_set(ad->btn_level_3_text, 220, 220, 220, 220);
+	return ECORE_CALLBACK_RENEW;
+}
+static Eina_Bool click_up_animation_level_3(void *data) {
+	appdata_s *ad = data;
+	evas_object_color_set(ad->btn_level_3, color_level_3[0], color_level_3[1],
+			color_level_3[2], color_level_3[3]);
+	evas_object_color_set(ad->btn_level_3_text, 255, 255, 255, 255);
+	return ECORE_CALLBACK_RENEW;
+}
+
+static void clicked_unlock(void *user_data, Evas* e, Evas_Object *obj,
+		void *event_info) {
+	appdata_s *ad = user_data;
+	evas_object_hide(ad->grid_cover);
+	cover_lock_counter = 0;
+}
+
+static void _set_cover_lock(void *data, Ecore_Thread *thread, void *msgdata) {
+	appdata_s *ad = data;
+	evas_object_show(ad->grid_cover);
+}
+
+static void _encore_thread_cover_lock(void *data, Ecore_Thread *thread) {
+	while (1) {
+		if (cover_lock_counter >= cover_lock_parameter) {
+			ecore_thread_feedback(thread,
+					(void*) (uintptr_t) cover_lock_counter);
+			cover_lock_counter = 0;
+		}
+		sleep(1);
+
+		cover_lock_counter += 1;
+	}
+}
+
+static void _end_cover_lock_thread(void *data, Ecore_Thread *thread) {
+	appdata_s *ad = data;
+}
+
+static void _encore_thread_check_long_press(void *data, Ecore_Thread *thread) {
+	while (1) {
+		if (level_0_pressed_time >= long_press_parameter) {
+			level_0_state = 0;
+			level_0_pressed_time = 0;
+			feedback_play(FEEDBACK_PATTERN_VIBRATION_ON);
+
+			struct tm* t;
+			time_t base = time(NULL);
+			t = localtime(&base);
+			char date_buf[64];
+			snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
+					t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min,
+					t->tm_sec);
+
+			char * filepath = get_write_filepath("hda_sensor_data.txt");
+			char msg_data[512];
+			snprintf(msg_data, 512,
+					"Pain report value = (%s, %s)\n",
+					"level0", date_buf);
+			append_file(filepath, msg_data);
+		}
+		if (level_1_pressed_time >= long_press_parameter) {
+			level_1_state = 0;
+			level_1_pressed_time = 0;
+			feedback_play(FEEDBACK_PATTERN_VIBRATION_ON);
+
+			struct tm* t;
+			time_t base = time(NULL);
+			t = localtime(&base);
+			char date_buf[64];
+			snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
+					t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min,
+					t->tm_sec);
+
+			char * filepath = get_write_filepath("hda_sensor_data.txt");
+			char msg_data[512];
+			snprintf(msg_data, 512, "Pain report value = (%s, %s)\n",
+					"level1", date_buf);
+			append_file(filepath, msg_data);
+		}
+		if (level_2_pressed_time >= long_press_parameter) {
+			level_2_state = 0;
+			level_2_pressed_time = 0;
+			feedback_play(FEEDBACK_PATTERN_VIBRATION_ON);
+
+			struct tm* t;
+			time_t base = time(NULL);
+			t = localtime(&base);
+			char date_buf[64];
+			snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
+					t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min,
+					t->tm_sec);
+
+			char * filepath = get_write_filepath("hda_sensor_data.txt");
+			char msg_data[512];
+			snprintf(msg_data, 512, "Pain report value = (%s, %s)\n",
+					"level2", date_buf);
+			append_file(filepath, msg_data);
+		}
+		if (level_3_pressed_time >= long_press_parameter) {
+			level_3_state = 0;
+			level_3_pressed_time = 0;
+			feedback_play(FEEDBACK_PATTERN_VIBRATION_ON);
+
+			struct tm* t;
+			time_t base = time(NULL);
+			t = localtime(&base);
+			char date_buf[64];
+			snprintf(date_buf, 64, "%d-%d-%d %d:%d:%d", t->tm_year + 1900,
+					t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min,
+					t->tm_sec);
+
+			char * filepath = get_write_filepath("hda_sensor_data.txt");
+			char msg_data[512];
+			snprintf(msg_data, 512, "Pain report value = (%s, %s)\n",
+					"level3", date_buf);
+			append_file(filepath, msg_data);
+		}
+
+		sleep(1);
+		if (level_0_state == 1) {
+			level_0_pressed_time += 1;
+			cover_lock_counter = 0;
+		}
+		if (level_1_state == 1) {
+			level_1_pressed_time += 1;
+			cover_lock_counter = 0;
+		}
+		if (level_2_state == 1) {
+			level_2_pressed_time += 1;
+			cover_lock_counter = 0;
+		}
+		if (level_3_state == 1) {
+			level_3_pressed_time += 1;
+			cover_lock_counter = 0;
+		}
+	}
 }
 
 //sensor_is_supported()
@@ -1247,136 +1456,6 @@ bool check_and_request_sensor_permission() {
 	}
 
 	return health_usable && physics_usable && environment_usable;
-
-//	int retval;
-//	ppm_check_result_e result;
-//	health_retval = ppm_check_permission(sensor_privilege, &result);
-//
-//	if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE) {
-//		switch (result) {
-//		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ALLOW:
-//			/* Update UI and start accessing protected functionality */
-//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//					"The application has permission to use a sensor privilege.");
-//
-//			if (!check_hrm_sensor_listener_is_created()) {
-//				if (!initialize_hrm_sensor()
-//						|| !initialize_hrm_led_green_sensor()) {
-//					dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//							"Failed to get the handle for the default sensor of a HRM sensor.");
-//					return false;
-//				} else
-//					dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//							"Succeeded in getting the handle for the default sensor of a HRM sensor.");
-//
-//				if (!create_hrm_sensor_listener(hrm_sensor_handle,
-//						hrm_led_green_sensor_handle)) {
-//					dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//							"Failed to create a HRM sensor listener.");
-//					//return false;
-//				} else
-//					dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//							"Succeeded in creating a HRM sensor listener.");
-//
-//				if (!start_hrm_sensor_listener())
-//					dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//							"Failed to start observing the sensor events regarding a HRM sensor listener.");
-//				else
-//					dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//							"Succeeded in starting observing the sensor events regarding a HRM sensor listener.");
-//			}
-//
-//			if (!check_physics_sensor_listener_is_created()) {
-//				if (!initialize_accelerometer_sensor()
-//						|| !initialize_gravity_sensor()
-//						|| !initialize_gyroscope_rotation_vector_sensor()
-//						|| !initialize_gyroscope_sensor()
-//						|| !initialize_linear_acceleration_sensor()) {
-//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
-//							"Failed to get the handle for the default sensor of a Physics sensor.");
-//					return false;
-//				} else
-//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
-//							"Succeeded in getting the handle for the default sensor of a Physics sensor.");
-//
-//				if (!create_physics_sensor_listener(accelerometer_sensor_handle,
-//						gravity_sensor_handle,
-//						gyroscope_rotation_vector_sensor_hanlde,
-//						gyroscope_sensor_handle,
-//						linear_acceleration_sensor_handle)) {
-//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
-//							"Failed to create a Physics sensor listener.");
-//					return false;
-//				} else
-//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
-//							"Succeeded in creating a Physics sensor listener.");
-//
-//				if (!start_physics_sensor_listener())
-//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
-//							"Failed to start observing the sensor events regarding a Physics sensor listener.");
-//				else
-//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
-//							"Succeeded in starting observing the sensor events regarding a Physics sensor listener.");
-//			}
-//
-//			if (!check_environment_sensor_listener_is_created()) {
-//				if (!initialize_light_sensor() || !initialize_pedometer()
-//						|| !initialize_pressure_sensor()
-//						|| !initialize_sleep_monitor()) {
-//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Failed to get the handle for the default sensor of a Environment sensor.");
-//					return false;
-//				} else
-//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Succeeded in getting the handle for the default sensor of a Environment sensor.");
-//
-//				if (!create_environment_sensor_listener(light_sensor_handle,
-//						pedometer_handle, pressure_sensor_handle,
-//						sleep_monitor_handle)) {
-//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Failed to create a Environment sensor listener.");
-//					return false;
-//				} else
-//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Succeeded in creating a Environment sensor listener.");
-//
-//				if (!start_environment_sensor_listener())
-//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Failed to start observing the sensor events regarding a Environment sensor listener.");
-//				else
-//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Succeeded in starting observing the sensor events regarding a Environment sensor listener.");
-//			}
-//			return true;
-//		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY:
-//			/* Show a message and terminate the application */
-//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//					"Function ppm_check_permission() output result = PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_DENY");
-//			dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//					"The application doesn't have permission to use a sensor privilege.");
-//			return false;
-//		case PRIVACY_PRIVILEGE_MANAGER_CHECK_RESULT_ASK:
-//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//					"The user has to be asked whether to grant permission to use a sensor privilege.");
-//
-//			if (!request_sensor_permission()) {
-//				dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//						"Failed to request a user's response to obtain permission for using the sensor privilege.");
-//				return false;
-//			} else {
-//				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//						"Succeeded in requesting a user's response to obtain permission for using the sensor privilege.");
-//				return true;
-//			}
-//		}
-//	} else {
-//		/* retval != PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE */
-//		/* Handle errors */
-//		dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//				"Function ppm_check_permission() return %s",
-//				get_error_message(retval));
-//		return false;
-//	}
 }
 
 bool request_sensor_permission() {
@@ -1405,23 +1484,6 @@ bool request_sensor_permission() {
 				get_error_message(mediastorage_retval));
 		return false;
 	}
-
-//	int retval;
-//
-//	retval = ppm_request_permission(sensor_privilege,
-//			request_sensor_permission_response_callback, NULL);
-//
-//	/* Log and handle errors */
-//	if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_NONE)
-//		return true;
-//	else if (retval == PRIVACY_PRIVILEGE_MANAGER_ERROR_ALREADY_IN_PROGRESS)
-//		return true;
-//	else {
-//		dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//				"Function ppm_request_permission() return value = %s",
-//				get_error_message(retval));
-//		return false;
-//	}
 }
 
 void request_health_sensor_permission_response_callback(ppm_call_cause_e cause,
@@ -1579,134 +1641,4 @@ void request_physics_sensor_permission_response_callback(ppm_call_cause_e cause,
 			break;
 		}
 	}
-}
-
-//void request_sensor_permission_response_callback(ppm_call_cause_e cause,
-//		ppm_request_result_e result, const char *privilege, void *user_data) {
-//	if (cause == PRIVACY_PRIVILEGE_MANAGER_CALL_CAUSE_ERROR) {
-//		/* Log and handle errors */
-//		dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//				"Function request_sensor_permission_response_callback() output cause = PRIVACY_PRIVILEGE_MANAGER_CALL_CAUSE_ERROR");
-//		dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//				"Function request_sensor_permission_response_callback() was called because of an error.");
-//	} else {
-//		dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//				"Function request_sensor_permission_response_callback() was called with a valid answer.");
-//
-//		switch (result) {
-//		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_ALLOW_FOREVER:
-//			/* Update UI and start accessing protected functionality */
-//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//					"The user granted permission to use a sensor privilege for an indefinite period of time.");
-//
-//			if (!initialize_hrm_sensor()
-//					|| !initialize_hrm_led_green_sensor()) {
-//				dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//						"Failed to get the handle for the default sensor of a HRM sensor.");
-//				ui_app_exit();
-//			} else
-//				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//						"Succeeded in getting the handle for the default sensor of a HRM sensor.");
-//
-//			if (!create_hrm_sensor_listener(hrm_sensor_handle,
-//					hrm_led_green_sensor_handle)) {
-//				dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//						"Failed to create a HRM sensor listener.");
-//				ui_app_exit();
-//			} else
-//				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//						"Succeeded in creating a HRM sensor listener.");
-//
-//			if (!start_hrm_sensor_listener()) {
-//				dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//						"Failed to start observing the sensor events regarding a HRM sensor listener.");
-//				ui_app_exit();
-//			} else
-//				dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//						"Succeeded in starting observing the sensor events regarding a HRM sensor listener.");
-//
-//			if (!check_physics_sensor_listener_is_created()) {
-//				if (!initialize_accelerometer_sensor()
-//						|| !initialize_gravity_sensor()
-//						|| !initialize_gyroscope_rotation_vector_sensor()
-//						|| !initialize_gyroscope_sensor()
-//						|| !initialize_linear_acceleration_sensor()) {
-//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
-//							"Failed to get the handle for the default sensor of a Physics sensor.");
-//				} else
-//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
-//							"Succeeded in getting the handle for the default sensor of a Physics sensor.");
-//
-//				if (!create_physics_sensor_listener(accelerometer_sensor_handle,
-//						gravity_sensor_handle,
-//						gyroscope_rotation_vector_sensor_hanlde,
-//						gyroscope_sensor_handle,
-//						linear_acceleration_sensor_handle)) {
-//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
-//							"Failed to create a Physics sensor listener.");
-//				} else
-//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
-//							"Succeeded in creating a Physics sensor listener.");
-//
-//				if (!start_physics_sensor_listener())
-//					dlog_print(DLOG_ERROR, PHYSICS_SENSOR_LOG_TAG,
-//							"Failed to start observing the sensor events regarding a Physics sensor listener.");
-//				else
-//					dlog_print(DLOG_INFO, PHYSICS_SENSOR_LOG_TAG,
-//							"Succeeded in starting observing the sensor events regarding a Physics sensor listener.");
-//			}
-//			if (!check_environment_sensor_listener_is_created()) {
-//				if (!initialize_light_sensor() || !initialize_pedometer()
-//						|| !initialize_pressure_sensor()
-//						|| !initialize_sleep_monitor()) {
-//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Failed to get the handle for the default sensor of a Environment sensor.");
-//				} else
-//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Succeeded in getting the handle for the default sensor of a Environment sensor.");
-//
-//				if (!create_environment_sensor_listener(light_sensor_handle,
-//						pedometer_handle, pressure_sensor_handle,
-//						sleep_monitor_handle)) {
-//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Failed to create a Environment sensor listener.");
-//				} else
-//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Succeeded in creating a Environment sensor listener.");
-//
-//				if (!start_environment_sensor_listener())
-//					dlog_print(DLOG_ERROR, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Failed to start observing the sensor events regarding a Environment sensor listener.");
-//				else
-//					dlog_print(DLOG_INFO, ENVIRONMENT_SENSOR_LOG_TAG,
-//							"Succeeded in starting observing the sensor events regarding a Environment sensor listener.");
-//			}
-//			break;
-//		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_FOREVER:
-//			/* Show a message and terminate the application */
-//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//					"Function request_sensor_permission_response_callback() output result = PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_FOREVER");
-//			dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//					"The user denied granting permission to use a sensor privilege for an indefinite period of time.");
-//			ui_app_exit();
-//			break;
-//		case PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_ONCE:
-//			/* Show a message with explanation */
-//			dlog_print(DLOG_INFO, HRM_SENSOR_LOG_TAG,
-//					"Function request_sensor_permission_response_callback() output result = PRIVACY_PRIVILEGE_MANAGER_REQUEST_RESULT_DENY_ONCE");
-//			dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
-//					"The user denied granting permission to use a sensor privilege once.");
-//			ui_app_exit();
-//			break;
-//		}
-//	}
-//}
-
-
-static Eina_Bool _do_animation(void *data, double pos)
-{
-    Evas_Object *dest = data;
-//    evas_object_color_set(dest, 50, 50, 50, 255);
-//    evas_object_size_hint_min_set(rect, 100, 230*pos);
-    return ECORE_CALLBACK_RENEW;
 }

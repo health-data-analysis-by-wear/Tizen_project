@@ -372,6 +372,7 @@ void accelerometer_sensor_listener_event_callback(sensor_h sensor,
 			date_buf, events[0].timestamp, events[0].values[0], events[0].values[1], events[0].values[2]);
 	append_file(filepath, msg_data);
 
+
 	for (int i = 1; i < events_count; i++) {
 		unsigned long long timestamp = events[i].timestamp;
 		//int accuracy = events[i].accuracy;
