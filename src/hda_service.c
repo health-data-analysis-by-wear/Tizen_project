@@ -35,6 +35,10 @@ typedef struct appdata {
 	Evas_Object *btn_level_2_text;
 	Evas_Object *btn_level_3_text;
 
+	Evas_Object *report_screen;
+	Evas_Object *report_screen_bg;
+	Evas_Object *report_screen_text;
+
 	Evas_Object *bg;
 
 	Evas_Object *nv;
@@ -88,6 +92,15 @@ static Eina_Bool click_up_animation_level_1(void *data);
 static Eina_Bool click_up_animation_level_2(void *data);
 static Eina_Bool click_up_animation_level_3(void *data);
 
+//static Eina_Bool report_animation(void *data, double pos);
+static void report_animation(void *data, Ecore_Thread *thread);
+static Ecore_Thread *report_thread;
+
+static double report_animation_speed = 0.5;
+static double report_animation_showing_time = 2;
+static void* report_draw(void *data, Evas_Coord x);
+static int report_color[] = {0, 0, 0, 255};
+
 static void _set_cover_lock(void *data, Ecore_Thread *thread, void *msg_data);
 static void _encore_thread_cover_lock(void *data, Ecore_Thread *thread);
 static void _end_cover_lock_thread(void *data, Ecore_Thread *thread);
@@ -109,15 +122,15 @@ static int level_3_pressed_time = 0;
 
 static void _encore_thread_check_long_press(void *data, Ecore_Thread *thread);
 
-static int color_level_0[] = { 0, 255, 91, 255 };
-static int color_level_1[] = { 254, 199, 86, 255 };
-static int color_level_2[] = { 255, 85, 85, 255 };
-static int color_level_3[] = { 126, 33, 24, 255 };
+static int color_level_0[] = { 244, 244, 244, 255 };
+static int color_level_1[] = { 112, 173, 70, 255 };
+static int color_level_2[] = { 0, 113, 192, 255 };
+static int color_level_3[] = { 6, 6, 6, 255 };
 
-static int hover_color_level_0[] = { 0, 212, 28, 255 };
-static int hover_color_level_1[] = { 253, 155, 29, 255 };
-static int hover_color_level_2[] = { 255, 9, 9, 255 };
-static int hover_color_level_3[] = { 62, 4, 2, 255 };
+static int hover_color_level_0[] = { 210, 210, 210, 255 };
+static int hover_color_level_1[] = { 50, 118, 21, 255 };
+static int hover_color_level_2[] = { 0, 50, 144, 255 };
+static int hover_color_level_3[] = { 0, 0, 0, 255 };
 
 bool check_hrm_sensor_is_supported();
 bool initialize_hrm_sensor();
@@ -212,9 +225,10 @@ static void create_base_gui(appdata_s *ad) {
 	elm_grid_pack(ad->grid_main, ad->btn_level_0, 0, 0, 50, 50);
 	evas_object_show(ad->btn_level_0);
 	ad->btn_level_0_text = elm_label_add(ad->grid_main);
-	evas_object_color_set(ad->btn_level_0_text, 255, 255, 255, 255);
+	evas_object_color_set(ad->btn_level_0_text, 0, 0, 0, 255);
 	elm_object_text_set(ad->btn_level_0_text,
-			"<align=center><font_size=30><b>없음</b></font></align>");
+			"<align=center><font_size=30><color=#000000FF><b>없음</b></color></font></align>");
+
 	elm_grid_pack(ad->grid_main, ad->btn_level_0_text, 0, 25, 50, 10);
 	evas_object_show(ad->btn_level_0_text);
 	evas_object_event_callback_add(ad->btn_level_0, EVAS_CALLBACK_MOUSE_DOWN,
@@ -305,7 +319,29 @@ static void create_base_gui(appdata_s *ad) {
 			ad);
 	evas_object_show(ad->btn_unlock);
 
+	// report_screen
+	ad->report_screen = elm_grid_add(ad->screen);
+	elm_grid_pack(ad->screen, ad->report_screen, 100, 0, 100, 100);
+	evas_object_show(ad->report_screen);
+
+	ad->report_screen_bg = elm_bg_add(ad->report_screen);
+	elm_bg_color_set(ad->report_screen_bg, 255, 255, 255);
+	elm_grid_pack(ad->report_screen, ad->report_screen_bg, 0, 0, 100, 100);
+	evas_object_show(ad->report_screen_bg);
+
+	ad->report_screen_text = elm_label_add(ad->report_screen);
+	evas_object_color_set(ad->report_screen_text, 0, 0, 0, 255);
+	elm_object_text_set(ad->report_screen_text,
+			"<align=center><font_size=28><b>통증이 기록되었습니다.</b></font></align>");
+	elm_grid_pack(ad->report_screen, ad->report_screen_text, 0, 40, 100, 20);
+	evas_object_show(ad->report_screen_text);
+
 	evas_object_show(ad->win);
+
+	ecore_thread_feedback_run(_encore_thread_cover_lock, _set_cover_lock,
+			_end_cover_lock_thread, NULL, ad, EINA_FALSE);
+	ecore_thread_feedback_run(_encore_thread_check_long_press, NULL, NULL, NULL,
+			ad, EINA_FALSE);
 }
 
 static bool app_create(void *data) {
@@ -454,11 +490,6 @@ static void app_resume(void *data) {
 	device_power_request_lock(POWER_LOCK_CPU, 0);
 
 	appdata_s *ad = data;
-
-	ecore_thread_feedback_run(_encore_thread_cover_lock, _set_cover_lock,
-			_end_cover_lock_thread, NULL, ad, EINA_FALSE);
-	ecore_thread_feedback_run(_encore_thread_check_long_press, NULL, NULL, NULL,
-			ad, EINA_FALSE);
 
 	if (!check_and_request_sensor_permission()) {
 		dlog_print(DLOG_ERROR, HRM_SENSOR_LOG_TAG,
@@ -730,6 +761,54 @@ static Eina_Bool click_up_animation_level_3(void *data) {
 	return ECORE_CALLBACK_RENEW;
 }
 
+//static void report_animation(void *data, double pos){
+//	dlog_print(DLOG_INFO, "Test code", "started: %f", pos);
+//	appdata_s *ad = data;
+//	if(pos <= report_animation_speed){
+//		Evas_Coord x = (Evas_Coord)(100 - 100*(pos/report_animation_speed));
+//		evas_object_move(ad->report_screen, x, 0);
+//	}
+//	else if(pos <= report_animation_speed + report_animation_showing_time){}
+//	else if(pos <= report_animation_speed*2 + report_animation_showing_time){
+//		Evas_Coord x = (Evas_Coord)(0 - 100*(pos/report_animation_speed));
+//		evas_object_move(ad->report_screen, x, 0);
+//	}
+//	return ECORE_CALLBACK_RENEW;
+//}
+
+Evas_Coord x = 100;
+static void report_animation(void *data, Ecore_Thread *thread){
+	appdata_s *ad = data;
+
+	double timer = 0;
+	while (timer <= report_animation_speed*2 + report_animation_showing_time) {
+		usleep(10000);
+		dlog_print(DLOG_INFO, "Test code", "%f", timer);
+		if (timer <= report_animation_speed) {
+			x = (Evas_Coord) (400 - 400 * (timer / report_animation_speed));
+			ecore_main_loop_thread_safe_call_sync(report_draw, ad);
+		}
+		else if (timer <= report_animation_speed + report_animation_showing_time) {}
+		else if (timer <= report_animation_speed * 2 + report_animation_showing_time) {
+			x = (Evas_Coord) (0 - 400 * (timer / report_animation_speed));
+			ecore_main_loop_thread_safe_call_sync(report_draw, ad);
+		}
+		timer += 0.01;
+	}
+	x = 400;
+	ecore_main_loop_thread_safe_call_sync(report_draw, ad);
+	ecore_thread_cancel(report_thread);
+}
+
+static void* report_draw(void *data, Evas_Coord x){
+	appdata_s *ad = data;
+//	elm_bg_color_set(ad->report_screen_bg, report_color[0],report_color[1], report_color[2]);
+//	evas_object_move(ad->report_screen, x, 0);
+//	elm_grid_pack(ad->report_screen, ad->report_screen_bg, x, 0, 100, 100);
+
+	return NULL;
+}
+
 static void clicked_unlock(void *user_data, Evas* e, Evas_Object *obj,
 		void *event_info) {
 	appdata_s *ad = user_data;
@@ -750,7 +829,6 @@ static void _encore_thread_cover_lock(void *data, Ecore_Thread *thread) {
 			cover_lock_counter = 0;
 		}
 		sleep(1);
-
 		cover_lock_counter += 1;
 	}
 }
@@ -760,11 +838,17 @@ static void _end_cover_lock_thread(void *data, Ecore_Thread *thread) {
 }
 
 static void _encore_thread_check_long_press(void *data, Ecore_Thread *thread) {
+	appdata_s *ad = data;
+
 	while (1) {
 		if (level_0_pressed_time >= long_press_parameter) {
 			level_0_state = 0;
 			level_0_pressed_time = 0;
 			feedback_play(FEEDBACK_PATTERN_VIBRATION_ON);
+			for (int i = 0; i < 4; i++) {
+				report_color[i] = color_level_0[i];
+			}
+			report_thread = ecore_thread_feedback_run(report_animation, NULL, NULL, NULL, ad, EINA_FALSE);
 
 			struct tm* t;
 			time_t base = time(NULL);
@@ -785,6 +869,10 @@ static void _encore_thread_check_long_press(void *data, Ecore_Thread *thread) {
 			level_1_state = 0;
 			level_1_pressed_time = 0;
 			feedback_play(FEEDBACK_PATTERN_VIBRATION_ON);
+			for(int i=0; i<4; i++){
+				report_color[i] = color_level_1[i];
+			}
+			report_thread = ecore_thread_feedback_run(report_animation, NULL, NULL, NULL, ad, EINA_FALSE);
 
 			struct tm* t;
 			time_t base = time(NULL);
@@ -804,6 +892,10 @@ static void _encore_thread_check_long_press(void *data, Ecore_Thread *thread) {
 			level_2_state = 0;
 			level_2_pressed_time = 0;
 			feedback_play(FEEDBACK_PATTERN_VIBRATION_ON);
+			for (int i = 0; i < 4; i++) {
+				report_color[i] = color_level_2[i];
+			}
+			report_thread = ecore_thread_feedback_run(report_animation, NULL, NULL, NULL, ad, EINA_FALSE);
 
 			struct tm* t;
 			time_t base = time(NULL);
@@ -823,6 +915,10 @@ static void _encore_thread_check_long_press(void *data, Ecore_Thread *thread) {
 			level_3_state = 0;
 			level_3_pressed_time = 0;
 			feedback_play(FEEDBACK_PATTERN_VIBRATION_ON);
+			for (int i = 0; i < 4; i++) {
+				report_color[i] = color_level_3[i];
+			}
+			report_thread = ecore_thread_feedback_run(report_animation, NULL, NULL, NULL, ad, EINA_FALSE);
 
 			struct tm* t;
 			time_t base = time(NULL);
