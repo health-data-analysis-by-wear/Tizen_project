@@ -96,9 +96,9 @@ static Eina_Bool click_up_animation_level_3(void *data);
 static void report_animation(void *data, Ecore_Thread *thread);
 static Ecore_Thread *report_thread;
 
-static double report_animation_speed = 0.5;
+static double report_animation_speed = 0.3;
 static double report_animation_showing_time = 2;
-static void* report_draw(void *data, Evas_Coord x);
+static void* report_draw(void *data);
 static int report_color[] = {0, 0, 0, 255};
 
 static void _set_cover_lock(void *data, Ecore_Thread *thread, void *msg_data);
@@ -125,12 +125,12 @@ static void _encore_thread_check_long_press(void *data, Ecore_Thread *thread);
 static int color_level_0[] = { 244, 244, 244, 255 };
 static int color_level_1[] = { 112, 173, 70, 255 };
 static int color_level_2[] = { 0, 113, 192, 255 };
-static int color_level_3[] = { 6, 6, 6, 255 };
+static int color_level_3[] = { 254, 0, 0, 255 };
 
 static int hover_color_level_0[] = { 210, 210, 210, 255 };
 static int hover_color_level_1[] = { 50, 118, 21, 255 };
 static int hover_color_level_2[] = { 0, 50, 144, 255 };
-static int hover_color_level_3[] = { 0, 0, 0, 255 };
+static int hover_color_level_3[] = { 187, 0, 0, 255 };
 
 bool check_hrm_sensor_is_supported();
 bool initialize_hrm_sensor();
@@ -333,7 +333,7 @@ static void create_base_gui(appdata_s *ad) {
 	evas_object_color_set(ad->report_screen_text, 0, 0, 0, 255);
 	elm_object_text_set(ad->report_screen_text,
 			"<align=center><font_size=28><b>통증이 기록되었습니다.</b></font></align>");
-	elm_grid_pack(ad->report_screen, ad->report_screen_text, 0, 40, 100, 20);
+	elm_grid_pack(ad->report_screen, ad->report_screen_text, 0, 45, 100, 20);
 	evas_object_show(ad->report_screen_text);
 
 	evas_object_show(ad->win);
@@ -761,20 +761,11 @@ static Eina_Bool click_up_animation_level_3(void *data) {
 	return ECORE_CALLBACK_RENEW;
 }
 
-//static void report_animation(void *data, double pos){
-//	dlog_print(DLOG_INFO, "Test code", "started: %f", pos);
-//	appdata_s *ad = data;
-//	if(pos <= report_animation_speed){
-//		Evas_Coord x = (Evas_Coord)(100 - 100*(pos/report_animation_speed));
-//		evas_object_move(ad->report_screen, x, 0);
-//	}
-//	else if(pos <= report_animation_speed + report_animation_showing_time){}
-//	else if(pos <= report_animation_speed*2 + report_animation_showing_time){
-//		Evas_Coord x = (Evas_Coord)(0 - 100*(pos/report_animation_speed));
-//		evas_object_move(ad->report_screen, x, 0);
-//	}
-//	return ECORE_CALLBACK_RENEW;
-//}
+
+
+float lerp(double a, double b, double alpha){
+	return a*(1-alpha)+b*alpha;
+}
 
 Evas_Coord x = 100;
 static void report_animation(void *data, Ecore_Thread *thread){
@@ -783,28 +774,28 @@ static void report_animation(void *data, Ecore_Thread *thread){
 	double timer = 0;
 	while (timer <= report_animation_speed*2 + report_animation_showing_time) {
 		usleep(10000);
-		dlog_print(DLOG_INFO, "Test code", "%f", timer);
 		if (timer <= report_animation_speed) {
-			x = (Evas_Coord) (400 - 400 * (timer / report_animation_speed));
+			x = (Evas_Coord) (100 - 100 * (timer / report_animation_speed));
+			x = (Evas_Coord) lerp(x, 0, timer / report_animation_speed);
 			ecore_main_loop_thread_safe_call_sync(report_draw, ad);
 		}
 		else if (timer <= report_animation_speed + report_animation_showing_time) {}
 		else if (timer <= report_animation_speed * 2 + report_animation_showing_time) {
-			x = (Evas_Coord) (0 - 400 * (timer / report_animation_speed));
+			x = (Evas_Coord) (0 - 100 * ((timer - report_animation_speed - report_animation_showing_time) / report_animation_speed));
+			x = (Evas_Coord) lerp(x, -100, -(timer - report_animation_speed - report_animation_showing_time) / report_animation_speed);
 			ecore_main_loop_thread_safe_call_sync(report_draw, ad);
 		}
 		timer += 0.01;
 	}
-	x = 400;
+	x = 100;
 	ecore_main_loop_thread_safe_call_sync(report_draw, ad);
 	ecore_thread_cancel(report_thread);
 }
 
-static void* report_draw(void *data, Evas_Coord x){
+static void* report_draw(void *data){
 	appdata_s *ad = data;
-//	elm_bg_color_set(ad->report_screen_bg, report_color[0],report_color[1], report_color[2]);
-//	evas_object_move(ad->report_screen, x, 0);
-//	elm_grid_pack(ad->report_screen, ad->report_screen_bg, x, 0, 100, 100);
+	elm_bg_color_set(ad->report_screen_bg, report_color[0],report_color[1], report_color[2]);
+	elm_grid_pack(ad->screen, ad->report_screen, x, 0, 100, 100);
 
 	return NULL;
 }
