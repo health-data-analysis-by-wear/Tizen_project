@@ -25,3 +25,5 @@
 459	668	0	hda_service	fb473327bc07379
 3	443	0	src/hda_service.o	6f5931152149eae3
 443	648	0	hda_service	fb473327bc07379
+6	2365	0	src/bluetooth/gatt/server.o	4bb81e857999d9ca
+2365	3477	0	hda_service	fb473327bc07379

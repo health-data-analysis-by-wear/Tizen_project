@@ -60,7 +60,7 @@ void gatt_server_connection_state_changed_callback(int result, bool connected, c
 	if(!connected)
 	{
 		dlog_print(DLOG_INFO, BLUETOOTH_LOG_TAG, "%s/%s/%d: A GATT server is disconnected.", __FILE__, __func__, __LINE__);
-		ui_app_exit();
+//		ui_app_exit();
 	}
 	else
 	{
